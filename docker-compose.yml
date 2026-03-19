@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  finops:
+    build: .
+    image: finops-intelligence:latest
+    container_name: finops-intelligence
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+# Run:  docker-compose up -d
+# Open: http://localhost:8080

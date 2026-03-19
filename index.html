@@ -1,0 +1,3879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FinOps Intelligence · AWS Resource Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — Apple-inspired, dark glass
+═══════════════════════════════════════════ */
+:root{
+  --bg:#000000;
+  --bg2:#0a0a0f;
+  --bg3:#111118;
+  --surface:#16161e;
+  --surface2:#1c1c26;
+  --surface3:#22222e;
+  --surface4:#282836;
+  --border:rgba(255,255,255,0.08);
+  --border2:rgba(255,255,255,0.12);
+  --border3:rgba(255,255,255,0.18);
+  --aws:#FF9500;
+  --aws2:#FFB340;
+  --aws-glow:rgba(255,149,0,0.2);
+  --aws-dim:rgba(255,149,0,0.08);
+  --blue:#0A84FF;
+  --blue2:#409CFF;
+  --blue-glow:rgba(10,132,255,0.2);
+  --blue-dim:rgba(10,132,255,0.08);
+  --green:#30D158;
+  --green-glow:rgba(48,209,88,0.2);
+  --green-dim:rgba(48,209,88,0.08);
+  --red:#FF453A;
+  --red-glow:rgba(255,69,58,0.2);
+  --red-dim:rgba(255,69,58,0.08);
+  --yellow:#FFD60A;
+  --yellow-dim:rgba(255,214,10,0.08);
+  --purple:#BF5AF2;
+  --purple-dim:rgba(191,90,242,0.08);
+  --cyan:#5AC8FA;
+  --cyan-dim:rgba(90,200,250,0.08);
+  --t1:#FFFFFF;
+  --t2:rgba(255,255,255,0.7);
+  --t3:rgba(255,255,255,0.4);
+  --t4:rgba(255,255,255,0.2);
+  --t5:rgba(255,255,255,0.08);
+  --radius:16px;
+  --radius2:12px;
+  --radius3:8px;
+  --radius4:6px;
+  --blur:blur(20px);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;font-size:15px}
+
+body{
+  background:var(--bg);
+  color:var(--t1);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;
+  line-height:1.5;
+}
+
+/* subtle noise texture */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:0.4;
+}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface4);border-radius:2px}
+
+/* ── HEADER ── */
+.header{
+  position:sticky;top:0;z-index:400;
+  height:52px;
+  background:rgba(0,0,0,0.72);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 24px;gap:0;
+  justify-content:space-between;
+}
+.h-left{display:flex;align-items:center;gap:10px}
+.h-logo{
+  width:28px;height:28px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.h-title{font-size:14px;font-weight:600;letter-spacing:-0.2px}
+.h-title span{color:var(--aws)}
+.h-right{display:flex;align-items:center;gap:8px}
+.h-pill{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:500;
+  padding:3px 10px;border-radius:20px;
+  background:var(--aws-dim);border:1px solid rgba(255,149,0,0.2);
+  color:var(--aws);letter-spacing:0.3px;
+}
+.h-pill.blue{background:var(--blue-dim);border-color:rgba(10,132,255,0.2);color:var(--blue2)}
+.h-pill.green{background:var(--green-dim);border-color:rgba(48,209,88,0.2);color:var(--green)}
+
+/* ── PAGE ── */
+.page{
+  max-width:1200px;margin:0 auto;
+  padding:32px 24px 120px;
+  position:relative;z-index:1;
+}
+
+/* ── MODE SELECTOR ── */
+.mode-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:10px;margin-bottom:32px;
+}
+@media(max-width:800px){.mode-bar{grid-template-columns:repeat(2,1fr)}}
+.mode-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 16px;
+  cursor:pointer;
+  transition:all 0.2s cubic-bezier(.25,.46,.45,.94);
+  position:relative;overflow:hidden;
+  user-select:none;
+}
+.mode-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent 0%,rgba(255,255,255,0.02) 100%);
+  opacity:0;transition:opacity 0.2s;
+}
+.mode-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.mode-card:hover::before{opacity:1}
+.mode-card.active{
+  background:var(--surface2);
+  border-color:var(--aws);
+  box-shadow:0 0 0 1px rgba(255,149,0,0.3), 0 8px 32px rgba(255,149,0,0.12);
+}
+.mc-icon{font-size:22px;margin-bottom:10px}
+.mc-name{font-size:13px;font-weight:600;margin-bottom:4px;letter-spacing:-0.1px}
+.mc-desc{font-size:11px;color:var(--t3);line-height:1.4}
+.mode-card.active .mc-name{color:var(--aws)}
+.mc-badge{
+  position:absolute;top:10px;right:10px;
+  font-size:9px;font-family:'JetBrains Mono',monospace;
+  padding:2px 6px;border-radius:4px;font-weight:600;
+  background:var(--green-dim);color:var(--green);
+  border:1px solid rgba(48,209,88,0.2);
+}
+
+/* ── PANELS ── */
+.panel{display:none}.panel.active{display:block}
+
+/* ── SECTION ── */
+.section{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.section-head{
+  padding:18px 22px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface2);
+}
+.section-title{
+  font-size:13px;font-weight:600;
+  display:flex;align-items:center;gap:8px;
+  letter-spacing:-0.1px;
+}
+.section-body{padding:22px}
+
+/* ── UPLOAD GRID ── */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.upload-grid{grid-template-columns:1fr}}
+
+.upload-zone{
+  border:1.5px dashed var(--border2);
+  border-radius:var(--radius2);
+  background:var(--surface2);
+  transition:all 0.2s;
+  cursor:pointer;
+  overflow:hidden;
+}
+.upload-zone.drag{
+  border-color:var(--aws);
+  background:var(--aws-dim);
+  box-shadow:0 0 0 4px rgba(255,149,0,0.08);
+}
+.upload-zone.loaded{
+  border-style:solid;
+  border-color:var(--border3);
+  cursor:default;
+}
+.uz-label{
+  padding:12px 16px 0;
+  display:flex;align-items:center;gap:8px;
+}
+.uz-tag{
+  font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;
+  padding:3px 8px;border-radius:4px;letter-spacing:0.5px;text-transform:uppercase;
+}
+.tag-truth{background:var(--aws-dim);color:var(--aws);border:1px solid rgba(255,149,0,0.25)}
+.tag-compare{background:var(--blue-dim);color:var(--blue2);border:1px solid rgba(10,132,255,0.25)}
+.tag-single{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(191,90,242,0.25)}
+
+.uz-drop{padding:24px 20px;text-align:center}
+.uz-ico{font-size:28px;margin-bottom:8px}
+.uz-main{font-size:13px;font-weight:500;margin-bottom:4px}
+.uz-sub{font-size:11px;color:var(--t3)}
+.uz-fmt{margin-top:8px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t4)}
+input[type=file]{display:none}
+
+/* loaded state */
+.uz-loaded{padding:12px 16px}
+.uz-file-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.uz-file-ico{font-size:20px}
+.uz-file-info{flex:1;min-width:0}
+.uz-fname{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uz-fstats{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.btn-clear{
+  background:none;border:1px solid var(--border2);color:var(--t3);
+  padding:4px 10px;border-radius:var(--radius4);cursor:pointer;
+  font-size:11px;transition:all 0.15s;font-family:'Inter',sans-serif;
+}
+.btn-clear:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+
+.uz-sheet-row{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:8px;
+}
+.uz-sheet-lbl{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.mini-sel{
+  flex:1;background:var(--surface3);border:1px solid var(--border);
+  color:var(--t1);padding:5px 8px;border-radius:var(--radius4);
+  font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;padding-right:20px;
+}
+.mini-sel:focus{outline:none;border-color:var(--aws)}
+
+/* quality */
+.uz-quality{margin-bottom:2px}
+.uq-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.uq-label{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;flex:1}
+.uq-score{font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600}
+.uq-track{flex:2;height:2px;background:var(--surface4);border-radius:1px;overflow:hidden}
+.uq-fill{height:100%;border-radius:1px;transition:width 0.6s ease}
+.uq-issues{display:flex;flex-wrap:wrap;gap:4px}
+.uq-iss{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:3px}
+.qi-ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.2)}
+.qi-w{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(255,214,10,0.2)}
+.qi-e{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,58,0.2)}
+
+/* preview */
+.uz-preview{overflow-x:auto;margin-top:8px}
+.prev-tbl{width:100%;border-collapse:collapse;font-size:10px;font-family:'JetBrains Mono',monospace}
+.prev-tbl th{background:var(--surface3);color:var(--aws);padding:5px 8px;text-align:left;border:1px solid var(--border);white-space:nowrap}
+.prev-tbl td{padding:4px 8px;border:1px solid var(--border);color:var(--t2);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.prev-tbl tr:nth-child(even) td{background:rgba(255,255,255,0.01)}
+.cell-empty{color:var(--t4)!important;font-style:italic}
+
+/* ── FIELD ── */
+.field-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field-label{
+  font-size:11px;font-weight:600;color:var(--t2);
+  text-transform:uppercase;letter-spacing:0.6px;
+  display:flex;align-items:center;gap:6px;
+}
+.auto-badge{
+  font-size:9px;padding:2px 6px;border-radius:3px;text-transform:none;letter-spacing:0;
+  background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.2);
+}
+.field-select{
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--t1);padding:11px 14px;border-radius:var(--radius3);
+  font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;
+  transition:border-color 0.15s;
+  width:100%;
+}
+.field-select:focus{outline:none;border-color:var(--aws);box-shadow:0 0 0 3px rgba(255,149,0,0.1)}
+.field-select option{background:var(--surface2)}
+.field-hint{font-size:11px;color:var(--t4)}
+
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.cfg-grid{grid-template-columns:1fr}}
+
+/* ── BUTTONS ── */
+.btn-primary{
+  background:linear-gradient(135deg,var(--aws),#e8820a);
+  color:#000;border:none;padding:12px 28px;border-radius:var(--radius3);
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  box-shadow:0 4px 16px rgba(255,149,0,0.25);
+  transition:all 0.2s cubic-bezier(.25,.46,.45,.94);
+  letter-spacing:-0.1px;
+}
+.btn-primary:hover:not(:disabled){
+  transform:translateY(-1px);
+  box-shadow:0 8px 24px rgba(255,149,0,0.35);
+}
+.btn-primary:active:not(:disabled){transform:translateY(0)}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+
+.btn-ghost{
+  background:none;border:1px solid var(--border2);color:var(--t2);
+  padding:12px 20px;border-radius:var(--radius3);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+  transition:all 0.15s;
+}
+.btn-ghost:hover{border-color:var(--border3);color:var(--t1);background:var(--surface3)}
+
+.btn-sm{
+  background:var(--surface3);border:1px solid var(--border);color:var(--t2);
+  padding:7px 14px;border-radius:var(--radius4);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  display:inline-flex;align-items:center;gap:5px;transition:all 0.15s;
+  white-space:nowrap;
+}
+.btn-sm:hover{border-color:var(--border3);color:var(--t1);background:var(--surface4)}
+.btn-sm.accent{border-color:rgba(255,149,0,0.3);color:var(--aws)}
+.btn-sm.accent:hover{background:var(--aws-dim)}
+
+.run-row{display:flex;gap:10px;align-items:center;margin-top:6px;padding-top:18px;border-top:1px solid var(--border)}
+
+/* ── PROGRESS ── */
+.progress-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:22px;margin-bottom:16px;
+  display:none;
+}
+.progress-wrap.show{display:block}
+.prog-list{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.prog-item{display:flex;align-items:center;gap:10px;font-size:12px}
+.prog-dot{
+  width:24px;height:24px;border-radius:50%;
+  border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex-shrink:0;transition:all 0.25s;
+  font-family:'JetBrains Mono',monospace;
+}
+.pd-run{border-color:var(--aws);background:var(--aws-dim);color:var(--aws)}
+.pd-done{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+.prog-text{color:var(--t3);transition:color 0.25s}
+.pt-run{color:var(--t1)}
+.pt-done{color:var(--green)}
+.prog-bar{height:2px;background:var(--surface3);border-radius:1px;overflow:hidden}
+.prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--aws),var(--aws2));border-radius:1px;transition:width 0.35s ease;width:0%}
+
+/* ── STATS ── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  gap:12px;margin-bottom:16px;display:none;
+}
+.stats-grid.show{display:grid}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:16px 18px;
+  transition:border-color 0.15s;
+}
+.stat-card:hover{border-color:var(--border2)}
+.sc-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;font-family:'JetBrains Mono',monospace}
+.sc-val{font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;letter-spacing:-1px}
+.sc-sub{font-size:10px;color:var(--t3);margin-top:4px}
+.cv-red{color:var(--red)}.cv-yel{color:var(--yellow)}.cv-grn{color:var(--green)}.cv-blue{color:var(--blue2)}.cv-aws{color:var(--aws)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);overflow-x:auto;padding-bottom:0}
+.tab-btn{
+  padding:11px 16px;cursor:pointer;font-size:12px;font-weight:500;
+  color:var(--t3);border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;
+  background:none;border-top:none;border-left:none;border-right:none;
+  font-family:'Inter',sans-serif;
+}
+.tab-btn:hover{color:var(--t2)}
+.tab-btn.on{color:var(--t1);border-bottom-color:var(--aws)}
+.tab-ct{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  padding:2px 6px;border-radius:8px;background:var(--surface3);
+}
+.tab-btn.on .tab-ct{background:var(--aws-dim);color:var(--aws)}
+.tab-content{display:none}.tab-content.on{display:block}
+
+/* ── TABLE ── */
+.tbl-controls{
+  display:flex;gap:10px;align-items:center;
+  padding:14px 0 12px;flex-wrap:wrap;
+}
+.tbl-search{
+  flex:1;min-width:180px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--t1);padding:9px 14px;border-radius:var(--radius3);
+  font-family:'Inter',sans-serif;font-size:13px;
+  transition:border-color 0.15s;
+}
+.tbl-search:focus{outline:none;border-color:var(--aws)}
+.tbl-search::placeholder{color:var(--t4)}
+
+.tbl-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius2);overflow:hidden;
+}
+.tbl-scroll{overflow-x:auto}
+.rtbl{width:100%;border-collapse:collapse}
+.rtbl th{
+  background:var(--surface2);color:var(--t2);
+  padding:10px 14px;text-align:left;
+  border-bottom:1px solid var(--border);
+  font-size:10px;text-transform:uppercase;letter-spacing:0.6px;
+  cursor:pointer;white-space:nowrap;user-select:none;
+  font-family:'JetBrains Mono',monospace;font-weight:600;
+  transition:color 0.15s;
+}
+.rtbl th:hover{color:var(--t1)}
+.rtbl td{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.4px;font-family:'JetBrains Mono',monospace}
+.b-exact{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,58,0.25)}
+.b-norm{background:rgba(255,120,0,0.08);color:#FF8C00;border:1px solid rgba(255,120,0,0.25)}
+.b-fuzzy{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(255,214,10,0.25)}
+.b-partial{background:var(--blue-dim);color:var(--blue2);border:1px solid rgba(10,132,255,0.25)}
+.b-clean{background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.25)}
+.b-new{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(191,90,242,0.25)}
+
+/* score bar inline */
+.score-inline{display:inline-flex;align-items:center;gap:5px}
+.si-bar{width:40px;height:2px;background:var(--surface4);border-radius:1px;overflow:hidden;display:inline-block;vertical-align:middle}
+.si-fill{height:100%;border-radius:1px}
+
+/* action btns */
+.act-btn{
+  background:none;border:1px solid var(--border);color:var(--t3);
+  padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;
+  font-family:'JetBrains Mono',monospace;transition:all 0.12s;margin-right:4px;
+}
+.act-btn.acc:hover,.act-btn.accd{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+.act-btn.rej:hover,.act-btn.rejd{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+
+/* pager */
+.pager{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;
+}
+.pager-btns{display:flex;gap:3px}
+.pg-btn{
+  background:var(--surface2);border:1px solid var(--border);color:var(--t2);
+  padding:4px 9px;border-radius:var(--radius4);cursor:pointer;
+  font-size:10px;font-family:'JetBrains Mono',monospace;transition:all 0.12s;
+}
+.pg-btn:hover{border-color:var(--border2);color:var(--t1)}
+.pg-btn.on{background:var(--aws-dim);border-color:var(--aws);color:var(--aws)}
+.pg-btn:disabled{opacity:0.3;cursor:not-allowed}
+
+/* empty */
+.empty-state{text-align:center;padding:48px 20px;color:var(--t4)}
+.empty-ico{font-size:32px;margin-bottom:8px}
+.empty-txt{font-size:13px}
+
+/* info bar */
+.info-bar{
+  background:var(--surface2);border:1px solid var(--border);
+  border-left:3px solid var(--cyan);border-radius:var(--radius3);
+  padding:11px 14px;font-size:12px;color:var(--t2);
+  display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;
+  line-height:1.5;
+}
+
+/* ── FILTER MODE BUILDER ── */
+.filter-builder{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:16px;margin-bottom:16px;
+}
+.filter-row{
+  display:grid;grid-template-columns:1fr 120px 1fr auto;
+  gap:8px;align-items:center;margin-bottom:8px;
+}
+@media(max-width:700px){.filter-row{grid-template-columns:1fr 1fr}}
+.filter-input{
+  background:var(--surface3);border:1px solid var(--border2);color:var(--t1);
+  padding:8px 12px;border-radius:var(--radius4);font-family:'Inter',sans-serif;
+  font-size:12px;width:100%;
+}
+.filter-input:focus{outline:none;border-color:var(--aws)}
+.btn-remove-filter{
+  background:none;border:none;color:var(--t4);cursor:pointer;
+  font-size:16px;padding:4px 8px;border-radius:4px;transition:color 0.1s;
+}
+.btn-remove-filter:hover{color:var(--red)}
+.add-filter-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  background:none;border:1px dashed var(--border2);color:var(--t3);
+  padding:7px 14px;border-radius:var(--radius4);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:12px;transition:all 0.15s;
+}
+.add-filter-btn:hover{border-color:var(--aws);color:var(--aws)}
+
+/* ── TEMPLATES ── */
+.templates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px}
+.template-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:14px;cursor:pointer;
+  transition:all 0.15s;
+}
+.template-card:hover{border-color:var(--border2);background:var(--surface3)}
+.tc-icon{font-size:18px;margin-bottom:8px}
+.tc-name{font-size:12px;font-weight:600;margin-bottom:3px}
+.tc-desc{font-size:11px;color:var(--t3);line-height:1.4}
+
+/* ── COST COMPARE ── */
+.compare-summary{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;margin-bottom:16px;
+}
+@media(max-width:700px){.compare-summary{grid-template-columns:1fr}}
+.cs-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:16px;text-align:center;
+}
+.cs-ico{font-size:20px;margin-bottom:6px}
+.cs-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.cs-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+/* delta badge */
+.delta{font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:4px;margin-left:4px}
+.delta-up{background:var(--red-dim);color:var(--red)}
+.delta-dn{background:var(--green-dim);color:var(--green)}
+.delta-eq{background:var(--surface3);color:var(--t3)}
+
+/* ── DQ PANEL ── */
+.dq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0 0}
+@media(max-width:700px){.dq-grid{grid-template-columns:1fr}}
+.dq-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius2);padding:14px}
+.dq-title{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:10px;font-family:'JetBrains Mono',monospace}
+.dq-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11px}
+.dq-key{color:var(--t3)}
+.dq-val{font-family:'JetBrains Mono',monospace;font-size:10px}
+
+/* ── TOAST ── */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{
+  background:rgba(22,22,30,0.95);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--border2);
+  border-radius:var(--radius2);
+  padding:10px 14px;font-size:12px;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  max-width:360px;pointer-events:all;
+  animation:tin 0.25s cubic-bezier(.25,.46,.45,.94);
+}
+.toast.ok{border-color:rgba(48,209,88,0.3)}
+.toast.er{border-color:rgba(255,69,58,0.3)}
+.toast.wa{border-color:rgba(255,214,10,0.3)}
+@keyframes tin{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tout{to{opacity:0;transform:translateY(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:14px;height:14px;border:1.5px solid rgba(255,149,0,0.2);border-top-color:var(--aws);border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block;flex-shrink:0}
+
+hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+
+/* ── LIGHT MODE ── */
+body.light{
+  --bg:#F5F5F7;
+  --bg2:#FFFFFF;
+  --bg3:#F0F0F5;
+  --surface:#FFFFFF;
+  --surface2:#F5F5F7;
+  --surface3:#EBEBF0;
+  --surface4:#E0E0E8;
+  --border:rgba(0,0,0,0.08);
+  --border2:rgba(0,0,0,0.12);
+  --border3:rgba(0,0,0,0.2);
+  --t1:#1D1D1F;
+  --t2:rgba(0,0,0,0.65);
+  --t3:rgba(0,0,0,0.4);
+  --t4:rgba(0,0,0,0.2);
+  --t5:rgba(0,0,0,0.06);
+}
+body.light .header{background:rgba(255,255,255,0.92);border-bottom:1px solid rgba(0,0,0,0.1)}
+body.light .h-title{color:#1D1D1F}
+body.light .h-title span{color:var(--aws)}
+body.light .h-left .logo-sub, body.light .header-subtitle{color:#6e6e73}
+body.light .theme-btn{background:#F5F5F7;border-color:rgba(0,0,0,0.12);color:#1D1D1F}
+body.light .theme-btn:hover{border-color:var(--aws);color:var(--aws);background:#fff}
+body.light .h-pill{background:rgba(255,149,0,0.1);border-color:rgba(255,149,0,0.2);color:#c47000}
+body.light .h-pill.blue{background:rgba(10,132,255,0.08);border-color:rgba(10,132,255,0.2);color:#0055cc}
+body.light .h-pill.green{background:rgba(48,209,88,0.1);border-color:rgba(48,209,88,0.2);color:#1a7a32}
+body.light #h-rows{background:rgba(48,209,88,0.1);border-color:rgba(48,209,88,0.2);color:#1a7a32}
+body.light .logo-sub{color:#6e6e73}
+body.light .mode-card{box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+body.light .rtbl th{background:#F5F5F7}
+body.light .prev-tbl th{background:#F0F0F5;color:#FF9500}
+body.light .tbl-search{background:#FFFFFF}
+body.light .field-select{background:#FFFFFF}
+body.light .mini-sel{background:#FFFFFF}
+body.light .filter-input{background:#FFFFFF}
+body.light .upload-zone{background:#FFFFFF}
+body.light .btn-ghost{background:#FFFFFF}
+body.light .btn-sm{background:#FFFFFF}
+body.light .progress-wrap{background:#FFFFFF}
+body.light .stat-card{background:#FFFFFF}
+body.light .section{background:#FFFFFF}
+body.light .section-head{background:#F5F5F7}
+body.light .template-card{background:#FFFFFF}
+body.light .filter-builder{background:#F5F5F7}
+body.light .compare-summary .cs-card{background:#FFFFFF}
+body.light .toast{background:rgba(255,255,255,0.95)}
+body.light .dq-card{background:#F5F5F7}
+
+/* ── AUTO/MANUAL SWITCH ── */
+.key-detect-wrap{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:16px 18px;margin-bottom:16px;
+}
+.kd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.kd-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.kd-mode-toggle{display:flex;gap:4px;background:var(--surface3);border-radius:8px;padding:3px}
+.kd-toggle-btn{
+  padding:5px 14px;border-radius:6px;border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  background:none;color:var(--t3);transition:all 0.2s;
+}
+.kd-toggle-btn.on{background:var(--aws);color:#000;box-shadow:0 2px 8px rgba(255,149,0,0.3)}
+.kd-auto-info{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.kd-confidence{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:2px 8px;border-radius:4px;
+}
+.kd-high{background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.25)}
+.kd-med{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(255,214,10,0.25)}
+.kd-low{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,58,0.25)}
+.kd-none{background:var(--surface3);color:var(--t3);border:1px solid var(--border)}
+.kd-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.kd-col-grid{grid-template-columns:1fr}}
+.kd-col-card{
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:8px;padding:12px 14px;
+}
+.kd-col-name{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.kd-col-val{font-size:13px;font-weight:600;color:var(--aws)}
+.kd-col-reason{font-size:10px;color:var(--t3);margin-top:3px}
+.kd-warning{
+  background:var(--red-dim);border:1px solid rgba(255,69,58,0.25);
+  border-radius:8px;padding:10px 14px;
+  font-size:12px;color:var(--red);display:flex;align-items:flex-start;gap:8px;
+  margin-top:8px;
+}
+/* Theme toggle btn */
+.theme-btn{
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--t2);padding:5px 12px;border-radius:20px;
+  cursor:pointer;font-size:12px;font-weight:500;
+  font-family:'Inter',sans-serif;transition:all 0.2s;
+  display:flex;align-items:center;gap:6px;
+}
+.theme-btn:hover{border-color:var(--aws);color:var(--aws)}
+
+/* ══════════════════════════════
+   TERMS & DATA GUIDELINES MODAL
+══════════════════════════════ */
+.terms-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+body.light .terms-overlay{background:rgba(0,0,0,0.55)}
+body.light .terms-modal{box-shadow:0 32px 80px rgba(0,0,0,0.18),0 0 0 1px rgba(255,149,0,0.2)}
+body.light .terms-header{background:#F5F5F7}
+body.light .terms-footer{background:#F5F5F7}
+body.light .ts-box{background:#FFFFFF}
+body.light .terms-accept-row{background:#FFFFFF}
+body.light .terms-checkbox{background:#EBEBF0}
+body.light .terms-warning{background:rgba(255,69,58,0.06);color:#CC0000}
+body.light .ts-item{color:#333333}
+body.light .ts-item strong{color:#000000}
+body.light .terms-title{color:#1D1D1F}
+body.light .terms-subtitle{color:#888888}
+body.light .terms-accept-text{color:#333333}
+body.light .terms-accept-row.checked{background:rgba(48,209,88,0.08)}
+/* modal theme toggle */
+.modal-theme-btn{
+  background:none;border:1px solid var(--border2);
+  color:var(--t3);padding:5px 12px;border-radius:20px;
+  cursor:pointer;font-size:11px;font-weight:500;
+  font-family:'Inter',sans-serif;transition:all 0.2s;
+  display:flex;align-items:center;gap:5px;
+}
+.modal-theme-btn:hover{border-color:var(--aws);color:var(--aws)}
+
+.terms-modal{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:20px;
+  width:100%;max-width:680px;
+  max-height:90vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 32px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,149,0,0.15);
+  overflow:hidden;
+  animation:modal-in 0.3s cubic-bezier(.25,.46,.45,.94);
+}
+@keyframes modal-in{from{transform:scale(0.93) translateY(12px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+
+.terms-header{
+  background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  padding:22px 28px 18px;
+  flex-shrink:0;
+}
+.terms-logo-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.terms-logo{
+  width:40px;height:40px;border-radius:12px;
+  background:linear-gradient(135deg,var(--aws),#e8820a);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;box-shadow:0 4px 16px var(--aws-glow);flex-shrink:0;
+}
+.terms-title{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.terms-title span{color:var(--aws)}
+.terms-subtitle{font-size:12px;color:var(--t3)}
+
+.terms-body{
+  overflow-y:auto;padding:24px 28px;flex:1;
+}
+.terms-body::-webkit-scrollbar{width:4px}
+.terms-body::-webkit-scrollbar-thumb{background:var(--surface4);border-radius:2px}
+
+.terms-section{margin-bottom:20px}
+.ts-label{
+  font-size:10px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;color:var(--aws);
+  font-family:'JetBrains Mono',monospace;
+  margin-bottom:8px;display:flex;align-items:center;gap:6px;
+}
+.ts-box{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;
+}
+.ts-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:7px 0;border-bottom:1px solid var(--border);
+  font-size:12px;color:var(--t2);line-height:1.5;
+}
+.ts-item:last-child{border-bottom:none;padding-bottom:0}
+.ts-ico{font-size:14px;flex-shrink:0;margin-top:1px}
+.ts-item strong{color:var(--t1)}
+
+.terms-warning{
+  background:var(--red-dim);
+  border:1px solid rgba(255,69,58,0.25);
+  border-radius:10px;padding:12px 16px;
+  font-size:12px;color:var(--t1);
+  display:flex;align-items:flex-start;gap:10px;
+  margin-bottom:20px;line-height:1.5;
+}
+
+.terms-accept-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;
+  cursor:pointer;margin-bottom:4px;
+  transition:border-color 0.15s;
+  user-select:none;
+}
+.terms-accept-row:hover{border-color:var(--aws)}
+.terms-accept-row.checked{border-color:var(--green);background:var(--green-dim)}
+.terms-checkbox{
+  width:20px;height:20px;border-radius:5px;
+  border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:12px;transition:all 0.15s;
+  background:var(--surface3);
+}
+.terms-accept-row.checked .terms-checkbox{
+  background:var(--green);border-color:var(--green);color:#000;
+}
+.terms-accept-text{font-size:13px;font-weight:500;color:var(--t2)}
+.terms-accept-row.checked .terms-accept-text{color:var(--t1)}
+
+.terms-footer{
+  padding:16px 28px;border-top:1px solid var(--border);
+  background:var(--surface2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.terms-proceed-btn{
+  background:linear-gradient(135deg,var(--aws),#e8820a);
+  color:#000;border:none;padding:11px 28px;
+  border-radius:var(--radius3);font-family:'Inter',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;
+  transition:all 0.2s;opacity:0.35;pointer-events:none;
+  display:flex;align-items:center;gap:7px;
+}
+.terms-proceed-btn.enabled{
+  opacity:1;pointer-events:all;
+  box-shadow:0 4px 16px rgba(255,149,0,0.3);
+}
+.terms-proceed-btn.enabled:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 24px rgba(255,149,0,0.4);
+}
+.terms-version{font-size:10px;color:var(--t4);font-family:'JetBrains Mono',monospace}
+
+
+/* ══════════════════════════
+   WALKTHROUGH SECTIONS
+══════════════════════════ */
+.walkthrough{
+  background:transparent;
+  border:1px dashed var(--border2);
+  border-radius:var(--radius2);
+  padding:0;
+  margin-bottom:12px;
+  overflow:hidden;
+  transition:border-color 0.2s;
+}
+.walkthrough:hover{border-color:var(--border3)}
+.wt-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;
+  background:none;border:none;cursor:pointer;
+  font-family:'Inter',sans-serif;
+  transition:background 0.15s;
+  text-align:left;
+}
+.wt-toggle:hover{background:var(--surface2);border-radius:var(--radius2)}
+.wt-toggle-left{display:flex;align-items:center;gap:8px}
+.wt-toggle-icon{font-size:13px;opacity:0.7}
+.wt-toggle-title{font-size:12px;font-weight:500;color:var(--t3)}
+.wt-toggle-sub{display:none}
+.wt-arrow{
+  font-size:10px;color:var(--t4);
+  transition:transform 0.2s;
+  flex-shrink:0;
+}
+.wt-arrow.open{transform:rotate(180deg)}
+
+.wt-body{
+  display:none;
+  padding:16px 20px 20px;
+  border-top:1px solid var(--border);
+  background:var(--surface);
+}
+.wt-body.open{display:block}
+
+.wt-steps{
+  display:flex;flex-direction:column;gap:8px;
+  margin-top:14px;
+}
+.wt-step{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 12px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:var(--radius3);
+}
+.wt-step-num{
+  width:24px;height:24px;border-radius:6px;
+  background:var(--aws);color:#000;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+  flex-shrink:0;
+}
+.wt-step-content{flex:1;min-width:0}
+.wt-step-title{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.wt-step-desc{font-size:11px;color:var(--t2);line-height:1.55}
+.wt-step-tip{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:5px;
+  font-size:10px;color:var(--aws);
+  background:var(--aws-dim);border:1px solid rgba(255,149,0,0.15);
+  padding:2px 8px;border-radius:20px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.wt-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;margin-top:12px;
+}
+@media(max-width:600px){.wt-grid{grid-template-columns:1fr}}
+.wt-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius3);padding:10px 12px;
+  vertical-align:top;
+}
+.wt-card-icon{font-size:15px;margin-bottom:5px;display:block}
+.wt-card-title{font-size:11px;font-weight:600;color:var(--t1);margin-bottom:2px}
+.wt-card-desc{font-size:11px;color:var(--t2);line-height:1.5}
+
+.wt-tabs-explain{
+  display:flex;flex-direction:column;
+  gap:5px;margin-top:12px;
+}
+.wt-tab-row{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius3);padding:8px 12px;
+}
+.wt-tab-badge{
+  font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:700;
+  padding:2px 7px;border-radius:4px;white-space:nowrap;
+  flex-shrink:0;margin-top:2px;min-width:90px;text-align:center;
+}
+.wt-tab-text{font-size:11px;color:var(--t2);line-height:1.5}
+.wt-tab-text strong{color:var(--t1)}
+
+body.light .wt-card{background:#FFFFFF}
+body.light .wt-tab-row{background:#FFFFFF}
+body.light .wt-step{background:#FFFFFF}
+body.light .wt-toggle:hover{background:#F5F5F7}
+body.light .walkthrough{border-color:rgba(0,0,0,0.12)}
+body.light .wt-body{background:#FAFAFA}
+
+
+@media(max-width:700px){
+  .feat-strip-grid{grid-template-columns:repeat(2,1fr)!important}
+}
+
+
+/* ══════════════════════════════════════
+   APPLE-LEVEL ANIMATIONS
+══════════════════════════════════════ */
+
+/* Page load — hero fade */
+@keyframes heroFadeIn {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Stagger fade for mode cards */
+@keyframes cardReveal {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Scroll reveal base state */
+.reveal {
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity 0.72s cubic-bezier(.25,.46,.45,.94),
+             transform 0.72s cubic-bezier(.25,.46,.45,.94);
+}
+.reveal.visible {
+  opacity:1;
+  transform:translateY(0);
+}
+
+/* Stagger delays for children */
+.reveal-stagger > *:nth-child(1){ transition-delay:0s }
+.reveal-stagger > *:nth-child(2){ transition-delay:0.08s }
+.reveal-stagger > *:nth-child(3){ transition-delay:0.16s }
+.reveal-stagger > *:nth-child(4){ transition-delay:0.24s }
+.reveal-stagger > *:nth-child(5){ transition-delay:0.32s }
+
+/* Mode cards — lift on hover exactly like Apple product tiles */
+.mode-card {
+  transition: transform 0.3s cubic-bezier(.25,.46,.45,.94),
+              border-color 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
+.mode-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18) !important;
+}
+.mode-card.active:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* Upload zones — gentle scale on drag */
+.upload-zone {
+  transition: all 0.25s cubic-bezier(.25,.46,.45,.94) !important;
+}
+
+/* Section headers reveal */
+.section-head {
+  transition: background 0.2s ease;
+}
+
+/* Stat cards — subtle pop on hover */
+.stat-card {
+  transition: transform 0.25s cubic-bezier(.25,.46,.45,.94),
+              border-color 0.25s ease !important;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Tab buttons */
+.tab-btn {
+  transition: color 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Buttons — Apple spring */
+.btn-primary, .btn-ghost {
+  transition: transform 0.18s cubic-bezier(.25,.46,.45,.94),
+              box-shadow 0.18s ease,
+              opacity 0.18s ease !important;
+}
+.btn-primary:active { transform: scale(0.97) !important; }
+.btn-ghost:active   { transform: scale(0.97) !important; }
+
+/* Walkthrough toggle */
+.wt-toggle {
+  transition: background 0.2s ease !important;
+}
+
+/* Number count-up */
+.count-num {
+  transition: all 0.1s ease;
+}
+
+/* Apple-style page load shimmer on header */
+@keyframes headerSlideDown {
+  from { transform:translateY(-100%); opacity:0; }
+  to   { transform:translateY(0);     opacity:1; }
+}
+.header {
+  animation: headerSlideDown 0.5s cubic-bezier(.25,.46,.45,.94) forwards;
+}
+
+/* Mode bar stagger on load */
+.mode-card:nth-child(1) { animation: cardReveal 0.6s cubic-bezier(.25,.46,.45,.94) 0.1s both; }
+.mode-card:nth-child(2) { animation: cardReveal 0.6s cubic-bezier(.25,.46,.45,.94) 0.18s both; }
+.mode-card:nth-child(3) { animation: cardReveal 0.6s cubic-bezier(.25,.46,.45,.94) 0.26s both; }
+.mode-card:nth-child(4) { animation: cardReveal 0.6s cubic-bezier(.25,.46,.45,.94) 0.34s both; }
+
+/* Apple bottom stats row reveal */
+.apple-stat {
+  opacity:0;
+  transform:translateY(20px);
+  transition: opacity 0.6s cubic-bezier(.25,.46,.45,.94),
+              transform 0.6s cubic-bezier(.25,.46,.45,.94);
+}
+.apple-stat.visible {
+  opacity:1;
+  transform:translateY(0);
+}
+.apple-stat:nth-child(1){ transition-delay:0s }
+.apple-stat:nth-child(2){ transition-delay:0.07s }
+.apple-stat:nth-child(3){ transition-delay:0.14s }
+.apple-stat:nth-child(4){ transition-delay:0.21s }
+.apple-stat:nth-child(5){ transition-delay:0.28s }
+
+/* Terms modal — spring in */
+@keyframes modal-in {
+  from { transform:scale(0.94) translateY(16px); opacity:0; }
+  to   { transform:scale(1)    translateY(0);    opacity:1; }
+}
+.terms-modal {
+  animation: modal-in 0.45s cubic-bezier(.34,1.56,.64,1) forwards !important;
+}
+
+/* Reduce motion — respect OS setting */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after {
+    animation-duration:0.01ms !important;
+    transition-duration:0.01ms !important;
+  }
+}
+
+
+
+/* Dot indicators */
+.carousel-dots {
+  display: flex; justify-content: center;
+  gap: 6px; margin-top: 14px;
+}
+.c-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--b2); cursor: pointer;
+  transition: all 0.3s cubic-bezier(.25,.46,.45,.94);
+}
+.c-dot.on {
+  width: 20px; border-radius: 3px;
+  background: var(--aws);
+}
+
+/* Gradient edges — peek effect */
+.carousel-fade-right {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: linear-gradient(90deg, transparent, var(--bg));
+  pointer-events: none; z-index: 2;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+body.light .carousel-fade-right {
+  background: linear-gradient(90deg, transparent, #F5F5F7);
+}
+
+
+/* ══════════════════════════════════════
+   PRE-FILTER / WITHIN-SHEET FILTER
+══════════════════════════════════════ */
+.prefilter-bar{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:var(--radius3);
+  padding:10px 14px;
+  margin:8px 16px 12px;
+  display:none;
+}
+.prefilter-bar.show{display:block}
+.pf-label{
+  font-size:10px;font-weight:600;color:var(--t3);
+  text-transform:uppercase;letter-spacing:0.6px;
+  font-family:'JetBrains Mono',monospace;
+  margin-bottom:6px;
+}
+.pf-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pf-select{
+  flex:1;min-width:120px;
+  background:var(--surface3);border:1px solid var(--border2);
+  color:var(--t1);padding:6px 10px;border-radius:var(--radius4);
+  font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;padding-right:22px;
+}
+.pf-select:focus{outline:none;border-color:var(--aws)}
+.pf-hint{font-size:10px;color:var(--t3);margin-top:5px;font-family:'JetBrains Mono',monospace}
+body.light .pf-select{background-color:#fff}
+
+
+/* ══════════════════════════════════════
+   SMART SUMMARY — clean reconcile UI
+══════════════════════════════════════ */
+.rec-smart-summary{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:var(--radius2);
+  padding:16px 20px;
+  margin-bottom:16px;
+}
+.rss-row{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.rss-item{flex:1;min-width:120px}
+.rss-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.rss-val{font-size:16px;font-weight:700;color:var(--aws);letter-spacing:-0.3px}
+.rss-sub{font-size:10px;color:var(--t4);margin-top:2px}
+.rss-arrow{font-size:20px;color:var(--t3);flex-shrink:0}
+.rss-wrong{margin-top:10px;font-size:11px;color:var(--t3)}
+.rss-fix-btn{
+  background:none;border:1px solid var(--border2);
+  color:var(--t2);padding:3px 10px;border-radius:20px;
+  font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;
+  margin-left:6px;transition:all 0.15s;
+}
+.rss-fix-btn:hover{border-color:var(--aws);color:var(--aws)}
+.btn-run-big{
+  padding:14px 40px !important;
+  font-size:15px !important;
+  letter-spacing:-0.2px;
+}
+body.light .rec-smart-summary{background:#fff}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="h-left">
+    <div class="h-logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="7" fill="#FF9500"/>
+        <rect x="8" y="7" width="12" height="2.5" rx="1.25" fill="white"/>
+        <rect x="8" y="12.75" width="8" height="2.5" rx="1.25" fill="white"/>
+        <rect x="8" y="18.5" width="5" height="2.5" rx="1.25" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div class="h-title">FinOps <span>Intelligence</span></div>
+    </div>
+  </div>
+  <div class="h-right">
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()"> Dark</button>
+    <div class="h-pill">v3.0.1</div>
+    <div class="h-pill blue">LOCAL ONLY</div>
+    <div class="h-pill green" id="h-rows" style="display:none">0 rows loaded</div>
+  </div>
+</header>
+
+<div class="page">
+
+
+  <!-- MODE SELECTOR -->
+  <div class="mode-bar">
+    <div class="mode-card active" data-mode="reconcile" onclick="switchMode('reconcile')">
+      <div class="mc-badge">CORE</div>
+      <div class="mc-icon"></div>
+      <div class="mc-name">Reconcile</div>
+      <div class="mc-desc">Cross-file matching. Find retired, new, or missing resources between two files.</div>
+    </div>
+    <div class="mode-card" data-mode="query" onclick="switchMode('query')">
+      <div class="mc-icon"></div>
+      <div class="mc-name">Smart Query</div>
+      <div class="mc-desc">Filter a single file. Find resources by cost, type, tag, region, or any column.</div>
+    </div>
+    <div class="mode-card" data-mode="compare" onclick="switchMode('compare')">
+      <div class="mc-icon"></div>
+      <div class="mc-name">Cost Compare</div>
+      <div class="mc-desc">Month vs month cost delta. Spot anomalies, spikes, and new charges.</div>
+    </div>
+    <div class="mode-card" data-mode="finops" onclick="switchMode('finops')">
+      <div class="mc-icon"></div>
+      <div class="mc-name">FinOps Templates</div>
+      <div class="mc-desc">One-click queries: idle resources, zombie EC2, untagged assets, budget alerts.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODE 1: RECONCILE
+  ══════════════════════════════════════════ -->
+  <div class="panel active" id="panel-reconcile">
+
+    <!-- Upload -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Upload Files</div>
+        <span style="font-size:11px;color:var(--t3)">XLSX · XLS · CSV · Multi-sheet supported</span>
+      </div>
+      <div class="section-body">
+        <div class="upload-grid">
+          <div class="upload-zone" id="uz-truth" ondragover="drag(event,'truth')" ondragleave="undrag('truth')" ondrop="drop(event,'truth')">
+            <div class="uz-label"><div class="uz-tag tag-truth">SOURCE OF TRUTH</div></div>
+            <div id="drop-truth">
+              <div class="uz-drop" onclick="document.getElementById('fi-truth').click()">
+                
+                <div class="uz-main">Drop your master / retired list</div>
+                <div class="uz-sub">Retired EC2s, decommissioned resources, baseline</div>
+                <div class="uz-fmt">XLSX · XLS · CSV</div>
+              </div>
+            </div>
+            <div id="loaded-truth" style="display:none"></div>
+            <input type="file" id="fi-truth" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'truth')"/>
+          <!-- Pre-filter for truth -->
+          <div class="prefilter-bar" id="pf-truth">
+            <div class="pf-label">Filter rows before matching (optional)</div>
+            <div class="pf-row">
+              <select class="pf-select" id="pf-truth-col" onchange="updatePFValues('truth')">
+                <option value="">— No filter —</option>
+              </select>
+              <select class="pf-select" id="pf-truth-val">
+                <option value="">— Select value —</option>
+              </select>
+            </div>
+            <div class="pf-hint" id="pf-truth-hint"></div>
+          </div>
+          </div>
+          <div class="upload-zone" id="uz-compare" ondragover="drag(event,'compare')" ondragleave="undrag('compare')" ondrop="drop(event,'compare')">
+            <div class="uz-label"><div class="uz-tag tag-compare">MONTHLY DATA</div></div>
+            <div id="drop-compare">
+              <div class="uz-drop" onclick="document.getElementById('fi-compare').click()">
+                
+                <div class="uz-main">Drop this month's inventory / report</div>
+                <div class="uz-sub">March EC2 list, current inventory, monthly export</div>
+                <div class="uz-fmt">XLSX · XLS · CSV</div>
+              </div>
+            </div>
+            <div id="loaded-compare" style="display:none"></div>
+            <input type="file" id="fi-compare" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'compare')"/>
+          <!-- Pre-filter for compare -->
+          <div class="prefilter-bar" id="pf-compare">
+            <div class="pf-label">Filter rows before matching (optional)</div>
+            <div class="pf-row">
+              <select class="pf-select" id="pf-compare-col" onchange="updatePFValues('compare')">
+                <option value="">— No filter —</option>
+              </select>
+              <select class="pf-select" id="pf-compare-val">
+                <option value="">— Select value —</option>
+              </select>
+            </div>
+            <div class="pf-hint" id="pf-compare-hint"></div>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div class="section" id="rec-config" style="display:none">
+      <div class="section-head">
+        <div class="section-title">Reconciliation Settings</div>
+      </div>
+      <div class="section-body">
+
+        <!-- SMART AUTO SUMMARY — shows after both files loaded -->
+        <div class="rec-smart-summary" id="rec-smart-summary" style="display:none">
+          <div class="rss-row">
+            <div class="rss-item">
+              <div class="rss-label">Matching column</div>
+              <div class="rss-val" id="rss-key-truth">—</div>
+              <div class="rss-sub" id="rss-key-sub">Auto-detected</div>
+            </div>
+            <div class="rss-arrow">↔</div>
+            <div class="rss-item">
+              <div class="rss-label">Matching column</div>
+              <div class="rss-val" id="rss-key-compare">—</div>
+              <div class="rss-sub">Monthly Data</div>
+            </div>
+          </div>
+          <div class="rss-wrong" id="rss-wrong">
+            Wrong column? <button class="rss-fix-btn" onclick="showRecAdvanced()">Change it</button>
+          </div>
+        </div>
+
+        <!-- ADVANCED OPTIONS — hidden by default, shown on demand -->
+        <div id="rec-advanced" style="display:none">
+          <div class="kd-header" style="margin-bottom:12px">
+            <div class="kd-title">Advanced Settings</div>
+            <button class="rss-fix-btn" onclick="hideRecAdvanced()" style="font-size:11px">✕ Close</button>
+          </div>
+          <!-- KEY DETECTION PANEL -->
+          <div class="key-detect-wrap" id="key-detect-wrap">
+            <div class="kd-mode-toggle" style="margin-bottom:10px">
+              <button class="kd-toggle-btn on" id="kd-auto-btn" onclick="setKeyMode('auto')"> Auto</button>
+              <button class="kd-toggle-btn" id="kd-manual-btn" onclick="setKeyMode('manual')"> Manual</button>
+            </div>
+            <div id="kd-auto-view">
+              <div class="kd-col-grid">
+                <div class="kd-col-card">
+                  <div class="kd-col-name">Source Key</div>
+                  <div class="kd-col-val" id="kd-truth-val">—</div>
+                  <div class="kd-col-reason" id="kd-truth-reason"></div>
+                </div>
+                <div class="kd-col-card">
+                  <div class="kd-col-name">Monthly Key</div>
+                  <div class="kd-col-val" id="kd-compare-val">—</div>
+                  <div class="kd-col-reason" id="kd-compare-reason"></div>
+                </div>
+              </div>
+              <div id="kd-warning" class="kd-warning" style="display:none"></div>
+            </div>
+            <div id="kd-manual-view" style="display:none">
+              <div class="kd-col-grid">
+                <div class="field-group" style="margin-bottom:0">
+                  <div class="field-label">Source of Truth — Key Column</div>
+                  <select class="field-select" id="sel-col-truth"></select>
+                  <div class="field-hint" id="hint-truth"></div>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <div class="field-label">Monthly Data — Key Column</div>
+                  <select class="field-select" id="sel-col-compare"></select>
+                  <div class="field-hint" id="hint-compare"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-grid" style="margin-top:12px">
+            <!-- hidden fields still needed for runReconcile to read -->
+            <input type="hidden" id="sel-objective" value="all"/>
+            <input type="hidden" id="sel-thresh" value="0.85"/>
+            <input type="hidden" id="sel-sec-truth" value=""/>
+            <input type="hidden" id="sel-export-cols" value="all"/>
+          </div>
+        </div>
+
+        <!-- kd-auto-info hidden placeholder -->
+        <div id="kd-auto-info" style="display:none"></div>
+
+        <div class="run-row" style="margin-top:16px">
+          <button class="btn-primary btn-run-big" id="btn-reconcile" onclick="runReconcile()">
+            <span id="rec-ico"></span><span id="rec-txt">Run Reconciliation</span>
+          </button>
+          <button class="btn-ghost" onclick="resetReconcile()">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="rec-progress">
+      <div class="prog-list" id="rec-prog-list"></div>
+      <div class="prog-bar"><div class="prog-bar-fill" id="rec-prog-fill"></div></div>
+    </div>
+
+    <!-- DQ -->
+    <div class="section" id="rec-dq" style="display:none">
+      <div class="section-head"><div class="section-title">Data Quality Report</div></div>
+      <div class="section-body" style="padding-top:0">
+        <div class="dq-grid" id="rec-dq-grid"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="rec-stats">
+      <div class="stat-card"><div class="sc-label">Confirmed Match</div><div class="sc-val cv-red" id="sv-conf">0</div><div class="sc-sub">Exact + normalized</div></div>
+      <div class="stat-card"><div class="sc-label">Needs Review</div><div class="sc-val cv-yel" id="sv-rev">0</div><div class="sc-sub">Fuzzy / partial</div></div>
+      <div class="stat-card"><div class="sc-label">Not in Source</div><div class="sc-val cv-blue" id="sv-new">0</div><div class="sc-sub">New resources</div></div>
+      <div class="stat-card"><div class="sc-label">Clean / Active</div><div class="sc-val cv-grn" id="sv-clean">0</div><div class="sc-sub">No match found</div></div>
+      <div class="stat-card"><div class="sc-label">Duplicates</div><div class="sc-val cv-aws" id="sv-dups">0</div><div class="sc-sub">Within same file</div></div>
+    </div>
+
+    <!-- Results -->
+    <div class="section" id="rec-results" style="display:none">
+      <div class="tabs">
+        <button class="tab-btn on" data-t="r-confirmed" onclick="swTab('rec','r-confirmed')">Confirmed <span class="tab-ct" id="tc-r-confirmed">0</span></button>
+        <button class="tab-btn" data-t="r-review" onclick="swTab('rec','r-review')">Review <span class="tab-ct" id="tc-r-review">0</span></button>
+        <button class="tab-btn" data-t="r-new" onclick="swTab('rec','r-new')">Not in Source <span class="tab-ct" id="tc-r-new">0</span></button>
+        <button class="tab-btn" data-t="r-clean" onclick="swTab('rec','r-clean')">Clean <span class="tab-ct" id="tc-r-clean">0</span></button>
+        <button class="tab-btn" data-t="r-missing" onclick="swTab('rec','r-missing')">Missing <span class="tab-ct" id="tc-r-missing">0</span></button>
+        <button class="tab-btn" data-t="r-dups" onclick="swTab('rec','r-dups')">Duplicates <span class="tab-ct" id="tc-r-dups">0</span></button>
+      </div>
+
+      <!-- confirmed -->
+      <div class="tab-content on" id="tc-panel-r-confirmed" style="display:block">
+        <div style="padding:0 0 0">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search confirmed matches…" oninput="ft('r-confirmed',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('r-confirmed')">⬇ Export CSV</button>
+            <button class="btn-sm accent" onclick="exportAllRec()">⬇ Full Report XLSX</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl">
+              <thead><tr>
+                <th onclick="sortT('r-confirmed',0)">#</th>
+                <th onclick="sortT('r-confirmed',1)">Resource (Monthly) ↕</th>
+                <th onclick="sortT('r-confirmed',2)">Matched in Source ↕</th>
+                <th onclick="sortT('r-confirmed',3)">Match Type ↕</th>
+                <th onclick="sortT('r-confirmed',4)">Score ↕</th>
+                <th onclick="sortT('r-confirmed',5)">Row# ↕</th>
+                <th>Extra Columns</th>
+              </tr></thead>
+              <tbody id="tbody-r-confirmed"></tbody>
+            </table>
+          </div><div id="pg-r-confirmed" class="pager"></div></div>
+        </div>
+      </div>
+
+      <!-- review -->
+      <div class="tab-content" id="tc-panel-r-review" style="display:none">
+        <div class="tbl-controls">
+          <div class="info-bar" style="margin-bottom:0;flex:1"><div>Possible matches. <strong>Accept</strong> = confirmed retired · <strong>Reject</strong> = treat as clean active resource</div></div>
+          <button class="btn-sm" onclick="acceptAllReview()"> Accept All</button>
+          <button class="btn-sm accent" onclick="exportTab('r-review')">⬇ Export</button>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl">
+            <thead><tr><th>#</th><th>Resource (Monthly) ↕</th><th>Closest in Source ↕</th><th>Match Type ↕</th><th>Similarity ↕</th><th>Action</th></tr></thead>
+            <tbody id="tbody-r-review"></tbody>
+          </table>
+        </div><div id="pg-r-review" class="pager"></div></div>
+      </div>
+
+      <!-- new -->
+      <div class="tab-content" id="tc-panel-r-new" style="display:none">
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search…" oninput="ft('r-new',this.value)"/>
+          <button class="btn-sm accent" onclick="exportTab('r-new')">⬇ Export</button>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl"><thead><tr><th>#</th><th>Resource Name</th><th>Status</th><th>Row#</th><th>Extra Columns</th></tr></thead>
+          <tbody id="tbody-r-new"></tbody></table>
+        </div><div id="pg-r-new" class="pager"></div></div>
+      </div>
+
+      <!-- clean -->
+      <div class="tab-content" id="tc-panel-r-clean" style="display:none">
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search…" oninput="ft('r-clean',this.value)"/>
+          <button class="btn-sm accent" onclick="exportTab('r-clean')">⬇ Export</button>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl"><thead><tr><th>#</th><th>Resource Name</th><th>Status</th><th>Row#</th><th>Extra Columns</th></tr></thead>
+          <tbody id="tbody-r-clean"></tbody></table>
+        </div><div id="pg-r-clean" class="pager"></div></div>
+      </div>
+
+      <!-- missing -->
+      <div class="tab-content" id="tc-panel-r-missing" style="display:none">
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search…" oninput="ft('r-missing',this.value)"/>
+          <button class="btn-sm accent" onclick="exportTab('r-missing')">⬇ Export</button>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl"><thead><tr><th>#</th><th>Resource (Source)</th><th>Status</th><th>Row#</th></tr></thead>
+          <tbody id="tbody-r-missing"></tbody></table>
+        </div><div id="pg-r-missing" class="pager"></div></div>
+      </div>
+
+      <!-- dups -->
+      <div class="tab-content" id="tc-panel-r-dups" style="display:none">
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search…" oninput="ft('r-dups',this.value)"/>
+          <button class="btn-sm accent" onclick="exportTab('r-dups')">⬇ Export</button>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl"><thead><tr><th>#</th><th>Resource Name</th><th>File</th><th>Count</th><th>Rows</th></tr></thead>
+          <tbody id="tbody-r-dups"></tbody></table>
+        </div><div id="pg-r-dups" class="pager"></div></div>
+      </div>
+    </div>
+
+    <!-- WALKTHROUGH: RECONCILE -->
+    <div class="walkthrough">
+      <button class="wt-toggle" onclick="toggleWT('wt-reconcile')">
+        <div class="wt-toggle-left">
+          
+          <div>
+            <div class="wt-toggle-title">How to use — Reconcile Mode</div>
+            <div class="wt-toggle-sub">Step-by-step guide · Click to expand</div>
+          </div>
+        </div>
+        <div class="wt-arrow" id="wt-reconcile-arrow" style="font-size:9px">▾</div>
+      </button>
+      <div class="wt-body" id="wt-reconcile">
+
+        <div class="wt-steps">
+          <div class="wt-step">
+            <div class="wt-step-num">1</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your Source of Truth</div>
+              <div class="wt-step-desc">This is your <strong>master retired/decommissioned list</strong> — the file that says "these AWS resources should no longer exist." Drag and drop it into the left zone, or click to browse. Supports .xlsx, .xls, .csv up to 50MB.</div>
+              <div class="wt-step-tip">Tip: If your file has multiple sheets, a dropdown will appear — pick the right one</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">2</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your Monthly Data</div>
+              <div class="wt-step-desc">This is <strong>this month's active inventory</strong> — your March EC2 list, current resource export, or monthly AWS report. Drop it in the right zone. The tool will show you a 3-row preview so you can verify it loaded correctly.</div>
+              <div class="wt-step-tip">Tip: The Data Quality score (0–100) tells you how clean your file is before you run anything</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">3</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Check the Primary Key Detection</div>
+              <div class="wt-step-desc">The tool automatically scans all columns and picks the best <strong>primary key</strong> (e.g. Application_Code, Resource_ID, Instance_ID). You'll see a confidence badge — Green = high confidence, Yellow = check it, Red = switch to Manual and pick the column yourself.</div>
+              <div class="wt-step-tip">Tip: Use the Auto / Manual toggle anytime if the auto-detection picked the wrong column</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">4</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Choose what you're looking for</div>
+              <div class="wt-step-desc">Select your objective from the dropdown: <strong>Decommissioned</strong> (find retired resources still appearing in monthly), <strong>New Resources</strong> (resources not in your master list), <strong>Missing</strong> (retired resources already gone from monthly), or <strong>Full Reconciliation</strong> (everything at once).</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">5</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Click Run Reconciliation</div>
+              <div class="wt-step-desc">The 5-tier matching engine runs in seconds — even on 10,000+ row files. It handles exact matches, typos, case differences, abbreviations, and reordered words automatically. Blank rows, N/A values, and Excel errors (#REF!) are silently filtered out.</div>
+              <div class="wt-step-tip">Tip: A warning toast will tell you if any rows were skipped due to blank or invalid key values</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">6</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Review your 6 result tabs</div>
+              <div class="wt-step-desc">Results are split into clear categories. Use the search box to filter, click column headers to sort, and paginate through large result sets. For fuzzy matches in the Review tab, click Accept or Reject on each row.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">7</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Export your report</div>
+              <div class="wt-step-desc">Click <strong>Export CSV</strong> for a single tab, or <strong>Full Report XLSX</strong> for a complete multi-sheet workbook with all tabs and a Summary sheet. The export includes every column from your original file — not just the key column.</div>
+              <div class="wt-step-tip">Tip: The Full Report XLSX is ready to email to leadership as-is</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;font-family:'JetBrains Mono',monospace;margin-bottom:10px">What each result tab means</div>
+        <div class="wt-tabs-explain">
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,58,0.25)"> CONFIRMED</div><div class="wt-tab-text"><strong>Definite matches.</strong> These resources appear in your monthly data AND in the retired list. Exact or normalized match. These need to be actioned.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(255,214,10,0.25)"> REVIEW</div><div class="wt-tab-text"><strong>Possible matches.</strong> High similarity (typo, abbreviation, case difference) but not 100% certain. Click Accept to confirm retired, or Reject to mark as clean.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--purple-dim);color:var(--purple);border:1px solid rgba(191,90,242,0.25)"> NOT IN SOURCE</div><div class="wt-tab-text"><strong>New resources.</strong> Appear in monthly data but have no match in your source of truth. Could be newly provisioned or misnamed.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.25)"> CLEAN</div><div class="wt-tab-text"><strong>Active resources.</strong> Not in the retired list. No action needed. These are your healthy, active AWS resources.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--blue-dim);color:var(--blue2);border:1px solid rgba(10,132,255,0.25)"> MISSING</div><div class="wt-tab-text"><strong>Already gone.</strong> These exist in your retired master list but were NOT found in this month's data. They've already been removed — informational only.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--aws-dim);color:var(--aws);border:1px solid rgba(255,149,0,0.25)"> DUPLICATES</div><div class="wt-tab-text"><strong>Duplicate keys.</strong> Same primary key appears more than once in the same file. Could cause false matches. Review and clean your source data.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODE 2: SMART QUERY
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-query">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Upload File to Query</div></div>
+      <div class="section-body">
+        <div class="upload-zone" id="uz-query" style="max-width:560px" ondragover="drag(event,'query')" ondragleave="undrag('query')" ondrop="drop(event,'query')">
+          <div class="uz-label"><div class="uz-tag tag-single">DATA FILE</div></div>
+          <div id="drop-query">
+            <div class="uz-drop" onclick="document.getElementById('fi-query').click()">
+              
+              <div class="uz-main">Drop your AWS cost or inventory file</div>
+              <div class="uz-sub">Cost Explorer CSV, CUR export, custom sheet</div>
+              <div class="uz-fmt">XLSX · XLS · CSV</div>
+            </div>
+          </div>
+          <div id="loaded-query" style="display:none"></div>
+          <input type="file" id="fi-query" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'query')"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="query-builder-section" style="display:none">
+      <div class="section-head">
+        <div class="section-title">Build Your Query</div>
+        <button class="btn-sm" onclick="clearFilters()">Clear All</button>
+      </div>
+      <div class="section-body">
+        <div class="filter-builder" id="filter-builder">
+          <!-- filters injected here -->
+        </div>
+        <button class="add-filter-btn" onclick="addFilter()">＋ Add Condition</button>
+        <hr class="divider"/>
+        <div class="cfg-grid" style="margin-bottom:12px">
+          <div class="field-group">
+            <div class="field-label">Group results by</div>
+            <select class="field-select" id="q-groupby">
+              <option value="">— No grouping (show all rows) —</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Sort by</div>
+            <select class="field-select" id="q-sortby">
+              <option value="">— Default order —</option>
+            </select>
+          </div>
+        </div>
+        <div class="run-row">
+          <button class="btn-primary" onclick="runQuery()">Run Query</button>
+          <button class="btn-ghost" onclick="resetQuery()">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Query results -->
+    <div class="section" id="query-results" style="display:none">
+      <div class="section-head">
+        <div class="section-title">Query Results</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm accent" onclick="exportQueryResults()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div style="padding:0 22px">
+        <!-- summary cards -->
+        <div id="query-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding:16px 0"></div>
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search results…" oninput="ft('qresults',this.value)"/>
+          <span id="q-row-count" style="font-size:11px;color:var(--t3);white-space:nowrap;font-family:'JetBrains Mono',monospace"></span>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl" id="tbl-qresults">
+            <thead id="thead-qresults"></thead>
+            <tbody id="tbody-qresults"></tbody>
+          </table>
+        </div><div id="pg-qresults" class="pager"></div></div>
+      </div>
+    </div>
+
+    <!-- WALKTHROUGH: SMART QUERY -->
+    <div class="walkthrough" style="margin-top:16px">
+      <button class="wt-toggle" onclick="toggleWT('wt-query')">
+        <div class="wt-toggle-left">
+          
+          <div>
+            <div class="wt-toggle-title">How to use — Smart Query Mode</div>
+            <div class="wt-toggle-sub">Filter any single file with multi-condition queries · Click to expand</div>
+          </div>
+        </div>
+        <div class="wt-arrow" id="wt-query-arrow"     style="font-size:9px">▾</div>
+      </button>
+      <div class="wt-body" id="wt-query">
+        <div class="wt-steps">
+          <div class="wt-step">
+            <div class="wt-step-num">1</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your data file</div>
+              <div class="wt-step-desc">Drop any AWS export — Cost Explorer CSV, CUR file, custom Excel inventory sheet. This mode works on a <strong>single file</strong>. You're not comparing two files here — you're asking questions about one.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">2</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Add filter conditions</div>
+              <div class="wt-step-desc">Click <strong>+ Add Condition</strong> to build your query row by row. Each condition has three parts: <strong>Column</strong> (which field to check), <strong>Operator</strong> (how to check it), and <strong>Value</strong> (what to look for). You can stack as many conditions as you need — all of them must match (AND logic).</div>
+              <div class="wt-step-tip">Tip: Example: Column = "Monthly_Cost" → Operator = "Greater than" → Value = "50"</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">3</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Optional: Group By and Sort By</div>
+              <div class="wt-step-desc">Use <strong>Group By</strong> to summarise results by a category (e.g. Region, Service Type). Use <strong>Sort By</strong> to order results — the tool auto-detects numeric columns and sorts them numerically so "$1,200" sorts above "$200" correctly.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">4</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Read your summary + results</div>
+              <div class="wt-step-desc">The results section shows summary cards at the top (total matching rows, total cost, average cost) followed by the full matching data table. Every column from your original file is shown.</div>
+              <div class="wt-step-tip">Tip: Cost columns are automatically detected — $1,234.56, 2.5K, (150.00) all parsed correctly</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;font-family:'JetBrains Mono',monospace;margin-bottom:10px">Available filter operators</div>
+        <div class="wt-grid">
+          <div class="wt-card"><div class="wt-card-title">Contains</div><div class="wt-card-desc">Cell includes your value anywhere. Use for partial name matches — "EC2" matches "EC2-PROD-001"</div></div>
+          <div class="wt-card"><div class="wt-card-title">Equals</div><div class="wt-card-desc">Exact match (case-insensitive). Use for specific regions, statuses — "us-east-1"</div></div>
+          <div class="wt-card"><div class="wt-card-title">Greater / Less than</div><div class="wt-card-desc">Numeric comparison. Strips $, commas automatically. Use for cost thresholds — "> 50"</div></div>
+          <div class="wt-card"><div class="wt-card-title">Not contains</div><div class="wt-card-desc">Exclude rows. Filter out dev environments — "Not contains dev"</div></div>
+          <div class="wt-card"><div class="wt-card-title">Is empty</div><div class="wt-card-desc">Find rows with a missing value. Great for finding untagged resources — "Tag is empty"</div></div>
+          <div class="wt-card"><div class="wt-card-title">Is not empty</div><div class="wt-card-desc">Find rows that have a value. Use to confirm tagged or configured resources</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODE 3: COST COMPARE
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-compare">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Upload Two Billing Periods</div></div>
+      <div class="section-body">
+        <div class="upload-grid">
+          <div class="upload-zone" id="uz-prev" ondragover="drag(event,'prev')" ondragleave="undrag('prev')" ondrop="drop(event,'prev')">
+            <div class="uz-label"><div class="uz-tag tag-truth">PREVIOUS MONTH</div></div>
+            <div id="drop-prev">
+              <div class="uz-drop" onclick="document.getElementById('fi-prev').click()">
+                
+                <div class="uz-main">Previous month cost file</div>
+                <div class="uz-sub">Feb, last quarter, baseline period</div>
+                <div class="uz-fmt">XLSX · XLS · CSV</div>
+              </div>
+            </div>
+            <div id="loaded-prev" style="display:none"></div>
+            <input type="file" id="fi-prev" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'prev')"/>
+          </div>
+          <div class="upload-zone" id="uz-curr" ondragover="drag(event,'curr')" ondragleave="undrag('curr')" ondrop="drop(event,'curr')">
+            <div class="uz-label"><div class="uz-tag tag-compare">CURRENT MONTH</div></div>
+            <div id="drop-curr">
+              <div class="uz-drop" onclick="document.getElementById('fi-curr').click()">
+                
+                <div class="uz-main">Current month cost file</div>
+                <div class="uz-sub">March, this quarter, current period</div>
+                <div class="uz-fmt">XLSX · XLS · CSV</div>
+              </div>
+            </div>
+            <div id="loaded-curr" style="display:none"></div>
+            <input type="file" id="fi-curr" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'curr')"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="cmp-config" style="display:none">
+      <div class="section-head"><div class="section-title">Comparison Settings</div></div>
+      <div class="section-body">
+        <div class="cfg-grid">
+          <div class="field-group">
+            <div class="field-label">Resource Key Column (both files)</div>
+            <select class="field-select" id="cmp-col-key"></select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Cost Column</div>
+            <select class="field-select" id="cmp-col-cost"></select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Spike threshold (%)</div>
+            <select class="field-select" id="cmp-spike">
+              <option value="10">10% increase</option>
+              <option value="20" selected>20% increase</option>
+              <option value="50">50% increase</option>
+              <option value="100">100% (doubled)</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Group / Service column (optional)</div>
+            <select class="field-select" id="cmp-col-service">
+              <option value="">— None —</option>
+            </select>
+          </div>
+        </div>
+        <div class="run-row">
+          <button class="btn-primary" onclick="runCompare()">Run Cost Comparison</button>
+          <button class="btn-ghost" onclick="resetCompare()">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare results -->
+    <div id="cmp-results" style="display:none">
+      <div class="compare-summary" id="cmp-summary-cards"></div>
+      <div class="section">
+        <div class="tabs">
+          <button class="tab-btn on" data-t="c-spikes" onclick="swTab('cmp','c-spikes')">Cost Spikes <span class="tab-ct" id="tc-c-spikes">0</span></button>
+          <button class="tab-btn" data-t="c-drops" onclick="swTab('cmp','c-drops')">Cost Drops <span class="tab-ct" id="tc-c-drops">0</span></button>
+          <button class="tab-btn" data-t="c-new" onclick="swTab('cmp','c-new')">New Resources <span class="tab-ct" id="tc-c-new">0</span></button>
+          <button class="tab-btn" data-t="c-gone" onclick="swTab('cmp','c-gone')">Removed <span class="tab-ct" id="tc-c-gone">0</span></button>
+          <button class="tab-btn" data-t="c-all" onclick="swTab('cmp','c-all')">All Changes <span class="tab-ct" id="tc-c-all">0</span></button>
+        </div>
+        <div id="tc-panel-c-spikes" class="tab-content on" style="display:block"><div style="padding:0 22px">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search spikes…" oninput="ft('c-spikes',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('c-spikes')">⬇ Export</button>
+            <button class="btn-sm accent" onclick="exportAllCmp()">⬇ Full Report</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl"><thead><tr><th>#</th><th>Resource ↕</th><th>Prev Cost ↕</th><th>Curr Cost ↕</th><th>Delta $ ↕</th><th>Delta % ↕</th><th>Service</th></tr></thead>
+            <tbody id="tbody-c-spikes"></tbody></table>
+          </div><div id="pg-c-spikes" class="pager"></div></div>
+        </div></div>
+        <div id="tc-panel-c-drops" class="tab-content" style="display:none"><div style="padding:0 22px">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search drops…" oninput="ft('c-drops',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('c-drops')">⬇ Export</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl"><thead><tr><th>#</th><th>Resource ↕</th><th>Prev Cost ↕</th><th>Curr Cost ↕</th><th>Delta $ ↕</th><th>Delta % ↕</th><th>Service</th></tr></thead>
+            <tbody id="tbody-c-drops"></tbody></table>
+          </div><div id="pg-c-drops" class="pager"></div></div>
+        </div></div>
+        <div id="tc-panel-c-new" class="tab-content" style="display:none"><div style="padding:0 22px">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search…" oninput="ft('c-new',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('c-new')">⬇ Export</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl"><thead><tr><th>#</th><th>Resource</th><th>Current Cost</th><th>Service</th><th>Status</th></tr></thead>
+            <tbody id="tbody-c-new"></tbody></table>
+          </div><div id="pg-c-new" class="pager"></div></div>
+        </div></div>
+        <div id="tc-panel-c-gone" class="tab-content" style="display:none"><div style="padding:0 22px">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search…" oninput="ft('c-gone',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('c-gone')">⬇ Export</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl"><thead><tr><th>#</th><th>Resource</th><th>Previous Cost</th><th>Service</th><th>Status</th></tr></thead>
+            <tbody id="tbody-c-gone"></tbody></table>
+          </div><div id="pg-c-gone" class="pager"></div></div>
+        </div></div>
+        <div id="tc-panel-c-all" class="tab-content" style="display:none"><div style="padding:0 22px">
+          <div class="tbl-controls">
+            <input class="tbl-search" placeholder="Search all changes…" oninput="ft('c-all',this.value)"/>
+            <button class="btn-sm accent" onclick="exportTab('c-all')">⬇ Export</button>
+          </div>
+          <div class="tbl-wrap"><div class="tbl-scroll">
+            <table class="rtbl"><thead><tr><th>#</th><th>Resource ↕</th><th>Prev Cost ↕</th><th>Curr Cost ↕</th><th>Delta $ ↕</th><th>Delta % ↕</th><th>Type ↕</th></tr></thead>
+            <tbody id="tbody-c-all"></tbody></table>
+          </div><div id="pg-c-all" class="pager"></div></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- WALKTHROUGH: COST COMPARE -->
+    <div class="walkthrough" style="margin-top:16px">
+      <button class="wt-toggle" onclick="toggleWT('wt-compare')">
+        <div class="wt-toggle-left">
+          
+          <div>
+            <div class="wt-toggle-title">How to use — Cost Compare Mode</div>
+            <div class="wt-toggle-sub">Compare two billing periods · Find spikes, drops & new charges · Click to expand</div>
+          </div>
+        </div>
+        <div class="wt-arrow" id="wt-compare-arrow"   style="font-size:9px">▾</div>
+      </button>
+      <div class="wt-body" id="wt-compare">
+        <div class="wt-steps">
+          <div class="wt-step">
+            <div class="wt-step-num">1</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your Previous Month file</div>
+              <div class="wt-step-desc">Drop your baseline billing file — February, last quarter, or any earlier period. This is what you're <strong>comparing against</strong>.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">2</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your Current Month file</div>
+              <div class="wt-step-desc">Drop your latest billing file — March, this quarter, current period. The tool will calculate the delta between the two.</div>
+              <div class="wt-step-tip">Tip: Both files must have the same resource identifier column and a cost column — the tool auto-detects both</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">3</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Set comparison settings</div>
+              <div class="wt-step-desc">Confirm the <strong>Resource Key</strong> column (auto-detected), <strong>Cost</strong> column (auto-detected), and set your <strong>spike threshold</strong> — e.g. flag anything that increased by more than 20%. Optionally add a Service/Type column to group results by AWS service.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">4</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Review the 5 result tabs</div>
+              <div class="wt-step-desc">Results show the dollar delta and percentage change per resource, sorted by biggest impact. Summary cards at the top show total previous spend, current spend, and net change at a glance.</div>
+              <div class="wt-step-tip">Tip: Red = cost went up, Green = cost went down — easy to read in a leadership presentation</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;font-family:'JetBrains Mono',monospace;margin-bottom:10px">What each tab shows</div>
+        <div class="wt-tabs-explain">
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,58,0.25)">COST SPIKES</div><div class="wt-tab-text"><strong>Cost increased</strong> beyond your threshold. Sorted by biggest $ increase. These are your first call to action.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(48,209,88,0.25)"> DROPS</div><div class="wt-tab-text"><strong>Cost decreased.</strong> Resources that got cheaper — could be from decommissioning, rightsizing, or reserved instance savings.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--purple-dim);color:var(--purple);border:1px solid rgba(191,90,242,0.25)">🆕 NEW</div><div class="wt-tab-text"><strong>New charges.</strong> Resources that appeared this month but were not in last month's file. New provisioning or newly discovered costs.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--surface3);color:var(--t2);border:1px solid var(--border)">REMOVED</div><div class="wt-tab-text"><strong>Gone this month.</strong> Resources that were in last month but not this month — decommissioned, deleted, or merged.</div></div>
+          <div class="wt-tab-row"><div class="wt-tab-badge" style="background:var(--aws-dim);color:var(--aws);border:1px solid rgba(255,149,0,0.25)"> ALL</div><div class="wt-tab-text"><strong>Complete picture.</strong> Every resource with its before/after cost, delta in $ and %, and change type. Best for the full export.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODE 4: FINOPS TEMPLATES
+  ══════════════════════════════════════════ -->
+  <div class="panel" id="panel-finops">
+    <div class="section">
+      <div class="section-head"><div class="section-title">Upload Your AWS Data File</div></div>
+      <div class="section-body">
+        <div class="upload-zone" id="uz-finops" style="max-width:560px" ondragover="drag(event,'finops')" ondragleave="undrag('finops')" ondrop="drop(event,'finops')">
+          <div class="uz-label"><div class="uz-tag tag-single">AWS DATA</div></div>
+          <div id="drop-finops">
+            <div class="uz-drop" onclick="document.getElementById('fi-finops').click()">
+              
+              <div class="uz-main">Drop your AWS export</div>
+              <div class="uz-sub">Cost Explorer CSV, CUR, Trusted Advisor, custom Excel</div>
+              <div class="uz-fmt">XLSX · XLS · CSV</div>
+            </div>
+          </div>
+          <div id="loaded-finops" style="display:none"></div>
+          <input type="file" id="fi-finops" accept=".xlsx,.xls,.csv" onchange="fileIn(event,'finops')"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="templates-section" style="display:none">
+      <div class="section-head"><div class="section-title">FinOps Query Templates</div><span style="font-size:11px;color:var(--t3)">Click any template to run instantly</span></div>
+      <div class="section-body">
+        <div class="templates-grid" id="templates-grid"></div>
+        <hr class="divider"/>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Or configure custom template:</div>
+        <div class="cfg-grid">
+          <div class="field-group">
+            <div class="field-label">Resource / Name column</div>
+            <select class="field-select" id="ft-col-name"></select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Cost column</div>
+            <select class="field-select" id="ft-col-cost"></select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Usage / Utilization column</div>
+            <select class="field-select" id="ft-col-usage">
+              <option value="">— Not available —</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Service / Type column</div>
+            <select class="field-select" id="ft-col-service">
+              <option value="">— Not available —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="finops-results" style="display:none">
+      <div class="section-head">
+        <div class="section-title" id="finops-result-title">Results</div>
+        <button class="btn-sm accent" onclick="exportFinopsResults()">⬇ Export CSV</button>
+      </div>
+      <div style="padding:0 22px">
+        <div id="finops-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding:16px 0"></div>
+        <div class="tbl-controls">
+          <input class="tbl-search" placeholder="Search results…" oninput="ft('finops-res',this.value)"/>
+          <span id="finops-row-count" style="font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace"></span>
+        </div>
+        <div class="tbl-wrap"><div class="tbl-scroll">
+          <table class="rtbl" id="tbl-finops-res">
+            <thead id="thead-finops-res"></thead>
+            <tbody id="tbody-finops-res"></tbody>
+          </table>
+        </div><div id="pg-finops-res" class="pager"></div></div>
+      </div>
+    </div>
+
+
+    <!-- WALKTHROUGH: FINOPS TEMPLATES -->
+    <div class="walkthrough" style="margin-top:16px">
+      <button class="wt-toggle" onclick="toggleWT('wt-finops')">
+        <div class="wt-toggle-left">
+          
+          <div>
+            <div class="wt-toggle-title">How to use — FinOps Templates Mode</div>
+            <div class="wt-toggle-sub">One-click pre-built FinOps queries · No setup needed · Click to expand</div>
+          </div>
+        </div>
+        <div class="wt-arrow" id="wt-finops-arrow"    style="font-size:9px">▾</div>
+      </button>
+      <div class="wt-body" id="wt-finops">
+        <div class="wt-steps">
+          <div class="wt-step">
+            <div class="wt-step-num">1</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Upload your AWS data file</div>
+              <div class="wt-step-desc">Drop any AWS export — Cost Explorer CSV, CUR report, Trusted Advisor export, or your own custom Excel. The tool auto-detects which columns are resource names, costs, services, regions, and tags.</div>
+              <div class="wt-step-tip">Tip: Works best with Cost Explorer or CUR files — column names are auto-recognised</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">2</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Click any template card</div>
+              <div class="wt-step-desc">No configuration needed — just click a card and results appear instantly. Each template is a pre-built FinOps query designed for common cloud cost governance tasks. You can run multiple templates one after another.</div>
+            </div>
+          </div>
+          <div class="wt-step">
+            <div class="wt-step-num">3</div>
+            <div class="wt-step-content">
+              <div class="wt-step-title">Review summary + export</div>
+              <div class="wt-step-desc">Each template shows a summary (total matching resources, total cost, average cost) and the full data table below. Click <strong>Export CSV</strong> to save the results for reporting or further analysis.</div>
+              <div class="wt-step-tip">Tip: For the Budget template, you'll be asked to enter your limit — then it finds all resources exceeding it</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;font-family:'JetBrains Mono',monospace;margin-bottom:10px">All 12 available templates</div>
+        <div class="wt-grid">
+          <div class="wt-card"><div class="wt-card-title">Idle Resources</div><div class="wt-card-desc">Cost &gt; $0 but zero or empty utilization. These are running but doing nothing — prime candidates for decommissioning.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Top 10 by Cost</div><div class="wt-card-desc">Your 10 highest-spending resources, sorted descending. Always the first thing leadership wants to see.</div></div>
+          <div class="wt-card"><div class="wt-card-title">EC2 / S3 / RDS Only</div><div class="wt-card-desc">Filter by AWS service type. Shows only the selected service's resources across your entire file.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Cost &gt; $50 / $100</div><div class="wt-card-desc">Quick spend threshold filter. Sorted by cost descending so biggest spenders are at the top.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Untagged Resources</div><div class="wt-card-desc">Resources with empty or missing tag columns. Tagging compliance is critical for cost allocation and chargeback.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Zombie EC2</div><div class="wt-card-desc">EC2 instances that are stopped or terminated but still incurring costs (EBS volumes, Elastic IPs). Should be cleaned up immediately.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Spend by Region</div><div class="wt-card-desc">Groups all resources by region and sums the total cost per region. Useful for multi-region cost governance.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Spend by Service</div><div class="wt-card-desc">Groups by AWS service type (EC2, S3, RDS, Lambda etc.) and totals spend per service. Great for executive summaries.</div></div>
+          <div class="wt-card"><div class="wt-card-title">Custom Budget Alert</div><div class="wt-card-desc">Enter any budget limit — finds all resources exceeding it. Use this for team-level or project-level budget enforcement.</div></div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+<!-- ══════════════════════════════════════
+     APPLE-STYLE BOTTOM SECTION
+══════════════════════════════════════ -->
+<div id="apple-bottom">
+
+  <!-- Big divider breathing room -->
+  <div style="height:80px"></div>
+
+  <!-- Apple-style feature row — just text, massive whitespace -->
+  <div style="border-top:1px solid var(--border);padding:64px 0 48px;text-align:center">
+    <div style="font-size:11px;font-weight:600;color:var(--t3);letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:48px">Built different</div>
+    <div style="display:flex;justify-content:center;gap:64px;flex-wrap:wrap" class="reveal-stagger">
+      <div style="text-align:center">
+        <div style="font-size:32px;font-weight:700;color:var(--aws);letter-spacing:-1px;line-height:1"><span id="anim-5">5</span></div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;font-weight:500">Matching tiers</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">Exact to fuzzy</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:32px;font-weight:700;color:var(--aws);letter-spacing:-1px;line-height:1"><span id="anim-0">0</span></div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;font-weight:500">External calls</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">100% offline</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:32px;font-weight:700;color:var(--aws);letter-spacing:-1px;line-height:1"><span id="anim-12">13</span></div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;font-weight:500">FinOps templates</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">One click, instant results</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:32px;font-weight:700;color:var(--aws);letter-spacing:-1px;line-height:1"><span id="anim-35">45</span><span style="font-size:18px">KB</span></div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;font-weight:500">Total package size</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">Docker + Git ready</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:32px;font-weight:700;color:var(--aws);letter-spacing:-1px;line-height:1"><span id="anim-110">225</span></div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;font-weight:500">Verified checks</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">All tests passing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Apple-style footer — super clean, minimal -->
+  <div style="border-top:1px solid var(--border);padding:20px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="font-size:11px;color:var(--t3)">
+        For internal use only. Not for external distribution.
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span style="font-size:11px;color:var(--t3)">AWS FinOps Intelligence</span>
+        <span style="font-size:11px;color:var(--t4)">·</span>
+        <span style="font-size:11px;color:var(--t3)">v3.0.1</span>
+        <span style="font-size:11px;color:var(--t4)">·</span>
+        <span style="font-size:11px;color:var(--t3)">Local Only</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /page -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════
+const G = {
+  files: {},       // key -> {fileName,sheets,selectedSheet,data,headers,quality}
+  results: {},     // tab -> []
+  decisions: {},
+  ft: {},          // tab -> filterText
+  pg: {},          // tab -> page
+  pgSz: 50,
+  sortDirs: {},
+  mode: 'reconcile',
+  queryFilters: [],
+  finopsData: [],
+  finopsHeaders: [],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// MODE SWITCH
+// ═══════════════════════════════════════════════════════════════
+function switchMode(mode) {
+  G.mode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c.dataset.mode === mode));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${mode}`));
+  // Restore results visibility after panel becomes active
+  setTimeout(function() {
+    // Reconcile results
+    if (G._recResultsVisible) {
+      const rr = gi('rec-results');
+      const rs = gi('rec-stats');
+      if (rr) rr.style.display = 'block';
+      if (rs) rs.classList.add('show');
+      // Re-render active tab
+      if (G._lastRecTab) swTab('rec', G._lastRecTab);
+    }
+    // Compare results
+    if (G._cmpResultsVisible) {
+      const cr = gi('cmp-results');
+      if (cr) cr.style.display = 'block';
+      if (G._lastCmpTab) swTab('cmp', G._lastCmpTab);
+    }
+    // Query results
+    if (G._queryResultsVisible) {
+      const qr = gi('query-results');
+      if (qr) qr.style.display = 'block';
+    }
+    // FinOps results
+    if (G._finopsResultsVisible) {
+      const fr = gi('finops-results');
+      if (fr) fr.style.display = 'block';
+    }
+  }, 10);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════════════════════════
+function drag(e, key) { e.preventDefault(); gi(`uz-${key}`)?.classList.add('drag'); }
+function undrag(key) { gi(`uz-${key}`)?.classList.remove('drag'); }
+function drop(e, key) { e.preventDefault(); undrag(key); const f = e.dataTransfer.files[0]; if (f) processFile(f, key); }
+function fileIn(e, key) { const f = e.target.files[0]; if (f) processFile(f, key); }
+
+// ═══════════════════════════════════════════════════════════════
+// FILE PROCESSING
+// ═══════════════════════════════════════════════════════════════
+function processFile(file, key) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls','csv'].includes(ext)) { toast('er', `❌ Unsupported format .${ext} — use XLSX, XLS or CSV`); return; }
+  if (file.size === 0) { toast('er', '❌ File is empty (0 bytes)'); return; }
+  if (file.size > 52428800) { toast('er', '❌ File too large (max 50MB)'); return; }
+
+  toast('info', `📂 Parsing ${file.name}…`);
+  const reader = new FileReader();
+  reader.onerror = () => toast('er', '❌ Could not read file — try again');
+  reader.onload = e => {
+    try {
+      let sheets = [];
+      if (ext === 'csv') {
+        const r = parseCSV(e.target.result);
+        sheets = [{ name:'Sheet1', ...r }];
+      } else {
+        const wb = XLSX.read(e.target.result, { type:'array', cellDates:true, raw:false });
+        for (const sn of wb.SheetNames) {
+          const ws = wb.Sheets[sn];
+          if (!ws || !ws['!ref']) { sheets.push({ name:sn, headers:[], data:[] }); continue; }
+          const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', blankrows:false });
+          if (!raw.length) { sheets.push({ name:sn, headers:[], data:[] }); continue; }
+          const parsed = extractHD(raw);
+          sheets.push({ name:sn, ...parsed });
+        }
+      }
+
+      const valid = sheets.filter(s => s.data && s.data.length > 0);
+      if (!valid.length) { toast('wa', `⚠️ "${file.name}" has no data rows`); return; }
+
+      const selIdx = sheets.indexOf(valid[0]);
+      G.files[key] = { fileName:file.name, sheets, selectedSheet:selIdx,
+        data:valid[0].data, headers:valid[0].headers,
+        quality: analyzeQuality(valid[0].data, valid[0].headers) };
+
+      renderLoaded(key);
+      onFileLoaded(key);
+      updateHeaderRowCount();
+      toast('ok', `✅ "${file.name}" — ${G.files[key].data.length.toLocaleString()} rows, ${G.files[key].headers.length} cols`);
+    } catch(err) { toast('er', `❌ Parse error: ${err.message}`); console.error(err); }
+  };
+  if (ext === 'csv') reader.readAsText(file, 'UTF-8'); else reader.readAsArrayBuffer(file);
+}
+
+// Smart header row detection — skips report titles / merged cell rows
+function extractHD(raw) {
+  let hRow = 0, maxFilled = 0;
+  for (let i = 0; i < Math.min(12, raw.length); i++) {
+    const filled = raw[i].filter(c => c !== '' && c !== null && c !== undefined).length;
+    if (filled > maxFilled) { maxFilled = filled; hRow = i; }
+  }
+  let headers = raw[hRow].map((h, i) => {
+    const s = String(h === null || h === undefined || h === '' ? `Col_${i+1}` : h).trim();
+    return s.replace(/[\r\n]+/g, ' ');
+  });
+  // Deduplicate
+  const seen = {};
+  headers = headers.map(h => { if (seen[h] !== undefined) { seen[h]++; return `${h}_${seen[h]}`; } seen[h] = 0; return h; });
+  // Remove empty cols
+  const nonEmpty = headers.map((_,i) => i).filter(i =>
+    raw.slice(hRow+1).some(r => r[i] !== '' && r[i] !== null && r[i] !== undefined)
+  );
+  const finalHeaders = nonEmpty.map(i => headers[i]);
+  const data = [];
+  for (let r = hRow + 1; r < raw.length; r++) {
+    const row = raw[r];
+    if (nonEmpty.every(i => row[i] === '' || row[i] === null || row[i] === undefined)) continue;
+    const obj = {};
+    nonEmpty.forEach((ci, idx) => {
+      const v = row[ci];
+      obj[finalHeaders[idx]] = v !== null && v !== undefined ? String(v).trim() : '';
+    });
+    data.push(obj);
+  }
+  return { headers: finalHeaders, data };
+}
+
+// CSV parser — BOM-safe, multi-delimiter, quote-aware
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/);
+  const delims = [',', ';', '\t', '|'];
+  let delim = ',', max = 0;
+  for (const d of delims) {
+    const re = new RegExp(d === '|' ? '\\|' : d === '\t' ? '\\t' : d, 'g');
+    const cnt = (lines[0].match(re) || []).length;
+    if (cnt > max) { max = cnt; delim = d; }
+  }
+  const parseRow = line => {
+    const cells = []; let cur = ''; let inQ = false; let i = 0;
+    while (i < line.length) {
+      const c = line[i];
+      if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i += 2; continue; } inQ = !inQ; i++; continue; }
+      if (c === delim && !inQ) { cells.push(cur.trim()); cur = ''; i++; continue; }
+      cur += c; i++;
+    }
+    cells.push(cur.trim());
+    return cells;
+  };
+  // Find first non-blank line as header
+  let hi = 0;
+  for (let i = 0; i < Math.min(5, lines.length); i++) { if (lines[i].trim()) { hi = i; break; } }
+  let headers = parseRow(lines[hi]).map((h, i) => h || `Col_${i+1}`);
+  const seen = {};
+  headers = headers.map(h => { if (seen[h] !== undefined) { seen[h]++; return `${h}_${seen[h]}`; } seen[h] = 0; return h; });
+  const data = [];
+  for (let i = hi + 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cells = parseRow(lines[i]);
+    if (cells.every(c => !c)) continue;
+    const obj = {};
+    headers.forEach((h, idx) => obj[h] = cells[idx] !== undefined ? cells[idx] : '');
+    data.push(obj);
+  }
+  return { headers, data };
+}
+
+function analyzeQuality(data, headers) {
+  const issues = []; let score = 100;
+  if (!data.length) return { score:0, issues:[{t:'e',m:'No data rows'}] };
+  const sparse = data.filter(r => headers.filter(h => r[h] && r[h] !== '').length < headers.length * 0.25).length;
+  if (sparse) { issues.push({t:'w', m:`${sparse} sparse rows`}); score -= 8; }
+  for (const h of headers) {
+    const emptyPct = Math.round(data.filter(r => !r[h] || r[h]==='').length / data.length * 100);
+    if (emptyPct > 60) { issues.push({t:'w', m:`"${h.slice(0,15)}": ${emptyPct}% blank`}); score -= 5; }
+  }
+  if (!issues.length) issues.push({t:'ok', m:'No issues ✓'});
+  return { score: Math.max(0, score), issues };
+}
+
+function renderLoaded(key) {
+  const fi = G.files[key];
+  const uzEl = gi(`uz-${key}`);
+  if (uzEl) { uzEl.classList.remove('drag'); uzEl.classList.add('loaded'); }
+  gi(`drop-${key}`).style.display = 'none';
+  const loadedEl = gi(`loaded-${key}`);
+  loadedEl.style.display = 'block';
+
+  const q = fi.quality;
+  const qColor = q.score >= 80 ? 'var(--green)' : q.score >= 50 ? 'var(--yellow)' : 'var(--red)';
+  const sheetSel = fi.sheets.length > 1 ? `
+    <div class="uz-sheet-row">
+      <div class="uz-sheet-lbl">Sheet:</div>
+      <select class="mini-sel" onchange="switchSheet('${key}',this.value)">
+        ${fi.sheets.map((s,i) => `<option value="${i}" ${i===fi.selectedSheet?'selected':''}>${s.name} (${s.data.length} rows)</option>`).join('')}
+      </select>
+    </div>` : '';
+  const prevCols = fi.headers.slice(0, 5);
+  const prevRows = fi.data.slice(0, 3);
+  const prevHtml = prevRows.length ? `
+    <div class="uz-preview"><table class="prev-tbl">
+      <thead><tr>${prevCols.map(h=>`<th title="${esc(h)}">${esc(h).slice(0,12)}${h.length>12?'…':''}</th>`).join('')}${fi.headers.length>5?`<th>+${fi.headers.length-5}</th>`:''}</tr></thead>
+      <tbody>${prevRows.map(r=>`<tr>${prevCols.map(h=>{const v=r[h]||'';return `<td class="${!v?'cell-empty':''}" title="${esc(v)}">${!v?'(empty)':esc(v).slice(0,16)}</td>`}).join('')}${fi.headers.length>5?'<td>…</td>':''}</tr>`).join('')}</tbody>
+    </table></div>` : '';
+
+  loadedEl.innerHTML = `
+    <div class="uz-loaded">
+      <div class="uz-file-row">
+        
+        <div class="uz-file-info">
+          <div class="uz-fname" title="${esc(fi.fileName)}">${esc(fi.fileName)}</div>
+          <div class="uz-fstats">${fi.data.length.toLocaleString()} rows · ${fi.headers.length} cols</div>
+        </div>
+        <button class="btn-clear" onclick="clearFile('${key}')">✕</button>
+      </div>
+      ${sheetSel}
+      <div class="uz-quality">
+        <div class="uq-bar-wrap">
+          <div class="uq-label">Data Quality</div>
+          <div class="uq-track"><div class="uq-fill" style="width:${q.score}%;background:${qColor}"></div></div>
+          <div class="uq-score" style="color:${qColor}">${q.score}/100</div>
+        </div>
+        <div class="uq-issues">${q.issues.slice(0,3).map(iss=>`<div class="uq-iss ${iss.t==='ok'?'qi-ok':iss.t==='e'?'qi-e':'qi-w'}">${esc(iss.m)}</div>`).join('')}</div>
+      </div>
+      ${prevHtml}
+    </div>`;
+}
+
+function switchSheet(key, idx) {
+  const fi = G.files[key];
+  fi.selectedSheet = parseInt(idx);
+  const sh = fi.sheets[fi.selectedSheet];
+  fi.data = sh.data; fi.headers = sh.headers;
+  fi.quality = analyzeQuality(fi.data, fi.headers);
+  renderLoaded(key);
+  onFileLoaded(key);
+  toast('ok', `📋 Switched to "${sh.name}"`);
+}
+
+function clearFile(key) {
+  delete G.files[key];
+  const uzEl = gi(`uz-${key}`);
+  if (uzEl) uzEl.classList.remove('drag', 'loaded');
+  gi(`drop-${key}`).style.display = 'block';
+  const ld = gi(`loaded-${key}`); ld.style.display = 'none'; ld.innerHTML = '';
+  const fi = gi(`fi-${key}`); if (fi) fi.value = '';
+  onFileLoaded(key);
+  updateHeaderRowCount();
+}
+
+function onFileLoaded(key) {
+  // Reconcile
+  if ((key === 'truth' || key === 'compare') && G.files.truth && G.files.compare) {
+    populateRecConfig();
+    gi('rec-config').style.display = 'block';
+  } else if (key === 'truth' || key === 'compare') {
+    gi('rec-config').style.display = 'none';
+  }
+  // Query
+  if (key === 'query') {
+    if (G.files.query) { populateQueryBuilder(); gi('query-builder-section').style.display = 'block'; }
+    else gi('query-builder-section').style.display = 'none';
+  }
+  // Compare
+  if ((key === 'prev' || key === 'curr') && G.files.prev && G.files.curr) {
+    populateCmpConfig();
+    gi('cmp-config').style.display = 'block';
+  } else if (key === 'prev' || key === 'curr') {
+    gi('cmp-config').style.display = 'none';
+  }
+  // FinOps
+  if (key === 'finops') {
+    if (G.files.finops) { populateFinopsTemplates(); gi('templates-section').style.display = 'block'; }
+    else gi('templates-section').style.display = 'none';
+  }
+}
+
+function updateHeaderRowCount() {
+  const totalRows = Object.values(G.files).reduce((a,f) => a + (f.data?.length||0), 0);
+  const pill = gi('h-rows');
+  if (totalRows > 0) { pill.textContent = `${totalRows.toLocaleString()} rows loaded`; pill.style.display = 'block'; }
+  else pill.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SMART COLUMN DETECTION
+// ═══════════════════════════════════════════════════════════════
+const KEY_KW = ['resourceid','resource_id','instanceid','instance_id','id','name','resourcename',
+  'resource_name','appcode','application_code','app_code','appname','app_name','appid','app_id',
+  'bucketname','bucket_name','functionname','dbidentifier','stackname','clusterid',
+  'hostname','identifier','key','uid','uuid','arn','asset','label','title'];
+const COST_KW = ['cost','charge','amount','spend','bill','price','usd','dollar','total','fee','usage_amount','blended','unblended','amortized'];
+const USAGE_KW = ['usage','utilization','util','cpu','memory','iops','percent','pct','hours','requests'];
+const SERVICE_KW = ['service','type','resource_type','productname','product','category','servicename','ec2','s3','rds'];
+const REGION_KW = ['region','availability_zone','az','location'];
+const TAG_KW = ['tag','owner','team','env','environment','project','department'];
+
+function scoreCol(h, data, keywords) {
+  const hn = h.toLowerCase().replace(/[\s_\-\.]/g,'');
+  let score = 0;
+  for (const k of keywords) { if (hn === k) { score += 12; break; } if (hn.includes(k)) { score += 5; break; } }
+  const vals = data.map(r => r[h]).filter(v => v && v.trim() !== '');
+  if (!vals.length) return score - 10;
+  const uniq = new Set(vals).size / vals.length;
+  const allNum = vals.every(v => !isNaN(parseFloat(v.replace(/[$,]/g, ''))));
+  const avgLen = vals.reduce((a,v) => a+v.length, 0) / vals.length;
+  // For KEY cols — prefer unique text
+  if (keywords === KEY_KW) score += uniq * 5 + (allNum ? -3 : 0) + (avgLen > 2 && avgLen < 80 ? 2 : 0);
+  // For COST cols — prefer numeric
+  if (keywords === COST_KW) score += allNum ? 8 : -4;
+  return score;
+}
+
+function bestCol(fi, keywords) {
+  let best = null, bestSc = -Infinity;
+  for (const h of fi.headers) {
+    const sc = scoreCol(h, fi.data, keywords);
+    if (sc > bestSc) { bestSc = sc; best = h; }
+  }
+  return best;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECONCILE — CONFIG
+// ═══════════════════════════════════════════════════════════════
+// ── KEY MODE: auto / manual ──
+G.keyMode = 'auto';
+function setKeyMode(mode) {
+  G.keyMode = mode;
+  gi('kd-auto-btn').classList.toggle('on', mode==='auto');
+  gi('kd-manual-btn').classList.toggle('on', mode==='manual');
+  gi('kd-auto-view').style.display = mode==='auto' ? 'block' : 'none';
+  gi('kd-manual-view').style.display = mode==='manual' ? 'block' : 'none';
+  updateSmartSummary();
+}
+
+function getKeyColTruth() {
+  if (G.keyMode === 'manual') {
+    const v = gi('sel-col-truth')?.value;
+    return v || G._autoKeyTruth;
+  }
+  return G._autoKeyTruth;
+}
+function getKeyColCompare() {
+  if (G.keyMode === 'manual') {
+    const v = gi('sel-col-compare')?.value;
+    return v || G._autoKeyCompare;
+  }
+  return G._autoKeyCompare;
+}
+
+function scoreColDetailed(fi, h) {
+  const hn = h.toLowerCase().replace(/[\s_\-\.]/g,'');
+  let score = 0, reasons = [];
+  // Keyword match
+  for(const k of KEY_KW){ if(hn===k){score+=12;reasons.push('exact keyword match: '+k);break;} if(hn.includes(k)){score+=5;reasons.push('contains keyword: '+k);break;} }
+  const vals = fi.data.map(r=>r[h]).filter(v=>v&&String(v).trim()!=='');
+  if(!vals.length){return{score:-20,reasons:['column is empty']};}
+  const uniq = new Set(vals).size/vals.length;
+  const allNum = vals.every(v=>!isNaN(parseFloat(String(v).replace(/[$,]/g,'')))&&String(v).trim()!=='');
+  const avgLen = vals.reduce((a,v)=>a+String(v).length,0)/vals.length;
+  if(uniq>0.9){score+=6;reasons.push('high uniqueness ('+Math.round(uniq*100)+'%)');}
+  else if(uniq>0.7){score+=3;reasons.push('moderate uniqueness ('+Math.round(uniq*100)+'%)');}
+  else{score-=3;reasons.push('low uniqueness ('+Math.round(uniq*100)+'%) — may not be a key');}
+  if(allNum&&avgLen<8){score-=5;reasons.push('looks numeric — may be a row ID, not a resource name');}
+  if(avgLen>3&&avgLen<60){score+=2;reasons.push('reasonable text length');}
+  return {score, reasons};
+}
+
+function confidenceLevel(score) {
+  if(score>=14)return{label:'High Confidence',cls:'kd-high'};
+  if(score>=8) return{label:'Medium Confidence',cls:'kd-med'};
+  if(score>=3) return{label:'Low Confidence',cls:'kd-low'};
+  return{label:'Could not detect',cls:'kd-none'};
+}
+
+function populateRecConfig() {
+  const ft = G.files.truth, fc = G.files.compare;
+  // Preserve current keyMode — don't reset to auto if user already set manual
+  const currentMode = G.keyMode || 'auto';
+
+  // Score ALL columns
+  const tScores = ft.headers.map(h=>({h, ...scoreColDetailed(ft,h)})).sort((a,b)=>b.score-a.score);
+  const cScores = fc.headers.map(h=>({h, ...scoreColDetailed(fc,h)})).sort((a,b)=>b.score-a.score);
+  const bT = tScores[0], bC = cScores[0];
+
+  G._autoKeyTruth   = bT?.h || ft.headers[0];
+  G._autoKeyCompare = bC?.h || fc.headers[0];
+
+  // Update auto-view
+  const tConf = confidenceLevel(bT?.score||0);
+  const cConf = confidenceLevel(bC?.score||0);
+  gi('kd-truth-val').textContent   = G._autoKeyTruth;
+  gi('kd-compare-val').textContent = G._autoKeyCompare;
+  gi('kd-truth-reason').textContent   = bT?.reasons?.slice(0,2).join(' · ')||'';
+  gi('kd-compare-reason').textContent = bC?.reasons?.slice(0,2).join(' · ')||'';
+
+  // Confidence badge
+  gi('kd-auto-info').innerHTML =
+    `Auto-detected primary key &nbsp;`+
+    `<span class="kd-confidence ${tConf.cls}">${tConf.label}</span>&nbsp;`+
+    `<span class="kd-confidence ${cConf.cls}">${cConf.label}</span>`;
+
+  // Warning if low confidence
+  const warn = gi('kd-warning');
+  if(bT?.score < 3 || bC?.score < 3) {
+    warn.style.display = 'flex';
+    warn.innerHTML = `<span>⚠️</span><div><strong>Could not reliably detect primary key.</strong> Columns may have low uniqueness or no recognizable identifier names. Switch to <strong>Manual</strong> mode and select the correct key column yourself.</div>`;
+    // Auto-switch to manual if very low confidence
+    if(bT?.score < 1 || bC?.score < 1) {
+      setKeyMode('manual');
+      toast('wa','⚠️ Could not auto-detect primary key — switched to Manual mode');
+    }
+  } else {
+    warn.style.display = 'none';
+  }
+
+  // Populate manual dropdowns too
+  const sel = (id, headers, best) => {
+    gi(id).innerHTML = headers.map(h=>`<option value="${esc(h)}" ${h===best?'selected':''}>${esc(h)}</option>`).join('');
+  };
+  sel('sel-col-truth',   ft.headers, G._autoKeyTruth);
+  sel('sel-col-compare', fc.headers, G._autoKeyCompare);
+  gi('hint-truth').textContent   = `From: ${ft.fileName}`;
+  gi('hint-compare').textContent = `From: ${fc.fileName}`;
+
+  // Secondary key
+  updateSmartSummary();
+  gi('sel-sec-truth').innerHTML = `<option value="">— None —</option>` + ft.headers.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+}
+
+// ── THEME TOGGLE ──
+G.theme = 'dark';
+function toggleTheme() {
+  G.theme = G.theme==='dark' ? 'light' : 'dark';
+  document.body.classList.toggle('light', G.theme==='light');
+  updateThemeBtn();
+  try{ localStorage.setItem('finops-theme', G.theme); }catch(e){}
+}
+function updateThemeBtn() {
+  const btn = gi('theme-btn');
+  const mBtn = gi('modal-theme-btn');
+  const mTxt = gi('modal-theme-txt');
+  if(btn) btn.textContent = G.theme==='light' ? 'Dark' : 'Light';
+  if(mTxt) mTxt.textContent = G.theme==='light' ? 'Dark' : 'Light';
+}
+// Restore saved theme
+try{
+  const saved = localStorage.getItem('finops-theme');
+  if(saved==='light'){
+    G.theme='light';
+    document.body.classList.add('light');
+  }
+}catch(e){}
+// Sync button text after DOM ready
+document.addEventListener('DOMContentLoaded', function(){ updateThemeBtn(); });
+
+// ═══════════════════════════════════════════════════════════════
+// RECONCILE — ENGINE
+// ═══════════════════════════════════════════════════════════════
+function norm(s) {
+  if (!s) return '';
+  return String(s).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+}
+function jw(a, b) {
+  if (a === b) return 1; if (!a || !b) return 0;
+  const l1=a.length, l2=b.length, md=Math.max(0,Math.floor(Math.max(l1,l2)/2)-1);
+  const m1=new Array(l1).fill(false), m2=new Array(l2).fill(false);
+  let matches=0, trans=0;
+  for(let i=0;i<l1;i++){for(let j=Math.max(0,i-md);j<Math.min(l2,i+md+1);j++){if(m2[j]||a[i]!==b[j])continue;m1[i]=m2[j]=true;matches++;break;}}
+  if(!matches)return 0;
+  let k=0;
+  for(let i=0;i<l1;i++){if(!m1[i])continue;while(!m2[k])k++;if(a[i]!==b[k])trans++;k++;}
+  const jv=(matches/l1+matches/l2+(matches-trans/2)/matches)/3;
+  let pfx=0;
+  for(let i=0;i<Math.min(4,l1,l2);i++){if(a[i]===b[i])pfx++;else break;}
+  return jv+pfx*0.1*(1-jv);
+}
+function matchVal(val, truthItems, thresh, secColT, secColC, mRow) {
+  if (!val || !val.trim()) return null;
+  const vl=val.toLowerCase().trim(), vn=norm(val);
+  const secOk=ti=>{ if(!secColT||!secColC)return true; return norm(ti.secVal||'')===norm(mRow[secColC]||'')||!ti.secVal||!mRow[secColC]; };
+  // T1 exact
+  for(const ti of truthItems){ if(String(ti.val).toLowerCase().trim()===vl&&secOk(ti)) return{type:'exact',score:1,truthVal:ti.val,truthIdx:ti.idx}; }
+  // T2 normalized
+  for(const ti of truthItems){ if(norm(ti.val)===vn&&vn&&secOk(ti)) return{type:'normalized',score:0.97,truthVal:ti.val,truthIdx:ti.idx}; }
+  // T3 contains
+  for(const ti of truthItems){ const tn=norm(ti.val); if(tn&&vn&&Math.min(tn.length,vn.length)>2&&(vn.includes(tn)||tn.includes(vn))&&secOk(ti)) return{type:'partial',score:0.88,truthVal:ti.val,truthIdx:ti.idx}; }
+  // T4 token set
+  for(const ti of truthItems){
+    const tA=new Set(vl.split(/[\s\-_\/]+/).filter(t=>t.length>1));
+    const tB=new Set(String(ti.val).toLowerCase().split(/[\s\-_\/]+/).filter(t=>t.length>1));
+    if(tA.size&&tB.size){const inter=[...tA].filter(t=>tB.has(t)).length;const sc=inter/Math.max(tA.size,tB.size);if(sc>=thresh&&secOk(ti))return{type:'partial',score:sc,truthVal:ti.val,truthIdx:ti.idx};}
+  }
+  // T5 fuzzy JW
+  let best=null, bestSc=0;
+  for(const ti of truthItems){const sc=jw(vn,norm(ti.val));if(sc>bestSc&&secOk(ti)){bestSc=sc;best=ti;}}
+  if(best&&bestSc>=thresh)return{type:'fuzzy',score:bestSc,truthVal:best.val,truthIdx:best.idx};
+  return null;
+}
+
+
+// ══════════════════════════════════════════
+//  PRE-FILTER UI — within-sheet column filter
+// ══════════════════════════════════════════
+function showPrefilter(key) {
+  const fi = G.files[key];
+  if (!fi || !fi.data || !fi.data.length) return;
+  const pfBar = gi('pf-' + key);
+  const pfCol = gi('pf-' + key + '-col');
+  if (!pfBar || !pfCol) return;
+  pfCol.innerHTML = '<option value="">— No filter —</option>' +
+    fi.headers.map(function(h) {
+      return '<option value="' + h.replace(/"/g,'&quot;') + '">' + h + '</option>';
+    }).join('');
+  var autoCol = fi.headers.find(function(h) {
+    var hn = h.toLowerCase().replace(/[\s_\-]/g,'');
+    return ['month','period','status','type','category','date','year','quarter'].some(function(k){ return hn.includes(k); });
+  });
+  if (autoCol) { pfCol.value = autoCol; updatePFValues(key); }
+  pfBar.classList.add('show');
+}
+
+function updatePFValues(key) {
+  const fi = G.files[key];
+  const colEl = gi('pf-' + key + '-col');
+  const valEl = gi('pf-' + key + '-val');
+  const hintEl = gi('pf-' + key + '-hint');
+  if (!fi || !colEl || !valEl) return;
+  const col = colEl.value;
+  if (!col) { valEl.innerHTML = '<option value="">— Select value —</option>'; if(hintEl)hintEl.textContent=''; return; }
+  const vals = {};
+  fi.data.forEach(function(r) { const v = String(r[col]||'').trim(); if(v) vals[v]=(vals[v]||0)+1; });
+  const sorted = Object.keys(vals).sort();
+  valEl.innerHTML = '<option value="">— All rows (no filter) —</option>' +
+    sorted.map(function(v) {
+      return '<option value="' + v.replace(/"/g,'&quot;') + '">' + v + ' (' + vals[v] + ' rows)</option>';
+    }).join('');
+  if(hintEl) hintEl.textContent = sorted.length + ' unique values in "' + col + '"';
+}
+
+async function runReconcile() {
+  const colT = getKeyColTruth();
+  const colC = getKeyColCompare();
+  const thresh = parseFloat(gi('sel-thresh').value);
+  const secT = gi('sel-sec-truth').value;
+  const objective = gi('sel-objective').value;
+  const exportMode = gi('sel-export-cols').value;
+  const ft = G.files.truth, fc = G.files.compare;
+
+  if (!ft || !fc) { toast('er','❌ Both files required'); return; }
+  if (!colT || !ft.headers.includes(colT)) { toast('er',`❌ Column "${colT}" not found in Source of Truth — switch to Manual mode and select the correct column`); return; }
+  if (!colC || !fc.headers.includes(colC)) { toast('er',`❌ Column "${colC}" not found in Monthly Data — switch to Manual mode and select the correct column`); return; }
+  toast('info', `Matching on: "${colT}" (Source) ↔ "${colC}" (Monthly)`);
+
+  const INVALID_MARKERS=new Set(['n/a','na','null','undefined','none','#ref!','#value!','#n/a','#name?','error','-','?','false','nan','nil','not applicable','not available']);
+  const cleanVal=v=>{
+    if(v===null||v===undefined)return '';
+    const s=String(v).trim();
+    if(!s)return '';
+    if(s.startsWith('#'))return '';
+    const n=s.toLowerCase().replace(/[^a-z0-9]/g,'');
+    const SKIP=new Set(['na','null','undefined','none','false','nan','nil','error','ref','value','name']);
+    if(!n||SKIP.has(n)||s.match(/^[!?\-\.\s]+$/))return '';
+    return s;
+  };
+  // Apply pre-filter if set (within-sheet column filter — inline)
+  const _applyPF = (key) => {
+    const fi = G.files[key];
+    if (!fi) return fi;
+    const colEl = document.getElementById('pf-' + key + '-col');
+    const valEl = document.getElementById('pf-' + key + '-val');
+    if (!colEl || !valEl) return fi;
+    const col = colEl.value;
+    const val = valEl.value;
+    if (!col || !val) return fi;
+    const filtered = fi.data.filter(r => String(r[col]||'').trim() === val);
+    if (!filtered.length) { toast('wa', 'Pre-filter matched 0 rows — using all rows'); return fi; }
+    toast('info', `Pre-filter: using ${filtered.length} rows where ${col} = "${val}"`);
+    return Object.assign({}, fi, { data: filtered });
+  };
+  const ftFiltered = _applyPF('truth');
+  const fcFiltered = _applyPF('compare');
+  const tItems = ftFiltered.data.map((r,i)=>({val:cleanVal(String(r[colT]||'')),secVal:r[secT]||'',idx:i+2,row:r})).filter(t=>t.val);
+  const mItems = fcFiltered.data.map((r,i)=>({val:cleanVal(String(r[colC]||'')),idx:i+2,row:r})).filter(m=>m.val);
+  const tSkipped = ftFiltered.data.length - tItems.length;
+  const mSkipped = fcFiltered.data.length - mItems.length;
+  if(tSkipped>0) toast('wa',`⚠️ ${tSkipped} rows skipped in Source of Truth (blank/invalid key)`);
+  if(mSkipped>0) toast('wa',`⚠️ ${mSkipped} rows skipped in Monthly Data (blank/invalid key)`);
+  if (!tItems.length) { toast('er',`❌ Column "${colT}" has no data — select a different column`); return; }
+  if (!mItems.length) { toast('er',`❌ Column "${colC}" has no data — select a different column`); return; }
+
+  const btn = gi('btn-reconcile'); btn.disabled = true;
+  gi('rec-ico').innerHTML = '<span class="spin"></span>';
+  gi('rec-txt').textContent = 'Analyzing…';
+
+  const steps = ['Validating inputs','Building match index','Running 5-tier matching engine','Detecting duplicates','Rendering results'];
+  showProg('rec', steps);
+  await sl(80);
+
+  updProg('rec',0,'done');updProg('rec',1,'run');await sl(60);
+
+  const confirmed=[],review=[],newRes=[],clean=[],missing=[];
+  const matchedKeys=new Set();
+
+  updProg('rec',1,'done');updProg('rec',2,'run');await sl(60);
+
+  // Extra cols helper
+  const extraCols = exportMode === 'all' ? fc.headers.filter(h => h !== colC) : [];
+  const getExtra = row => {
+    const o = {};
+    extraCols.forEach(h => o[h] = row[h]||'');
+    return o;
+  };
+
+  for (const mi of mItems) {
+    const m = matchVal(mi.val, tItems, thresh, secT, colC, mi.row);
+    const base = { app:mi.val, rowMonthly:mi.idx, ...getExtra(mi.row) };
+    if (!m) {
+      if (objective === 'retired' || objective === 'all') clean.push({ ...base });
+      else newRes.push({ ...base });
+    } else if (m.type==='exact'||m.type==='normalized') {
+      confirmed.push({ ...base, truthApp:m.truthVal, matchType:m.type, score:m.score, rowTruth:m.truthIdx });
+      matchedKeys.add(norm(m.truthVal));
+    } else {
+      review.push({ ...base, truthApp:m.truthVal, matchType:m.type, score:m.score, rowTruth:m.truthIdx });
+      matchedKeys.add(norm(m.truthVal));
+    }
+  }
+
+  // Missing from monthly
+  tItems.filter(ti => !matchedKeys.has(norm(ti.val))).forEach(ti =>
+    missing.push({ app:ti.val, rowTruth:ti.idx })
+  );
+
+  updProg('rec',2,'done');updProg('rec',3,'run');await sl(60);
+
+  // Duplicates
+  const dups=[];
+  for (const [fi2, label, col] of [[ft,'Source of Truth',colT],[fc,'Monthly Data',colC]]) {
+    const seen={};
+    fi2.data.forEach((r,i)=>{const v=norm(r[col]||'');if(v){seen[v]=seen[v]||{val:r[col],rows:[]};seen[v].rows.push(i+2);}});
+    Object.values(seen).filter(v=>v.rows.length>1).forEach(v=>dups.push({app:v.val,file:label,count:v.rows.length,rows:v.rows.slice(0,10).join(', ')}));
+  }
+
+  updProg('rec',3,'done');updProg('rec',4,'run');await sl(60);
+
+  // Store
+  G.results['r-confirmed'] = confirmed;
+  G.results['r-review'] = review;
+  G.results['r-new'] = objective !== 'retired' ? newRes : [];
+  G.results['r-clean'] = objective === 'retired' || objective === 'all' ? clean : [];
+  G.results['r-missing'] = missing;
+  G.results['r-dups'] = dups;
+  G.decisions = {};
+  ['r-confirmed','r-review','r-new','r-clean','r-missing','r-dups'].forEach(t=>{G.ft[t]='';G.pg[t]=1;});
+
+  // DQ
+  renderDQ('rec-dq-grid', [
+    {name:ft.fileName, q:ft.quality, rows:ft.data.length, cols:ft.headers.length},
+    {name:fc.fileName, q:fc.quality, rows:fc.data.length, cols:fc.headers.length},
+  ]);
+  gi('rec-dq').style.display='block';
+
+  // Stats
+  gi('sv-conf').textContent=confirmed.length;
+  gi('sv-rev').textContent=review.length;
+  gi('sv-new').textContent=(newRes.length||clean.length);
+  gi('sv-clean').textContent=clean.length||newRes.length;
+  gi('sv-dups').textContent=dups.length;
+  gi('rec-stats').classList.add('show');
+
+  // Tabs
+  ['r-confirmed','r-review','r-new','r-clean','r-missing','r-dups'].forEach(t=>{
+    gi(`tc-${t}`).textContent=G.results[t].length;
+    renderTab(t);
+  });
+  gi('rec-results').style.display='block';
+  G._recResultsVisible=true; G._lastRecTab='r-confirmed';
+  gi('rec-results').scrollIntoView({behavior:'smooth',block:'start'});
+
+  updProg('rec',4,'done');setProg('rec',100);
+
+  btn.disabled=false; gi('rec-ico').textContent=''; gi('rec-txt').textContent='Run Again';
+  toast('ok',`✅ Done! ${confirmed.length} confirmed, ${review.length} to review`);
+}
+
+function resetReconcile() {
+  G._recResultsVisible = false; G._lastRecTab = null;
+  ['truth','compare'].forEach(k => clearFile(k));
+  gi('rec-config').style.display='none';
+  gi('rec-progress').classList.remove('show');
+  gi('rec-dq').style.display='none';
+  gi('rec-stats').classList.remove('show');
+  gi('rec-results').style.display='none';
+  const btn=gi('btn-reconcile');btn.disabled=false;gi('rec-ico').textContent='';gi('rec-txt').textContent='Run Reconciliation';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SMART QUERY
+// ═══════════════════════════════════════════════════════════════
+function populateQueryBuilder() {
+  const fi = G.files.query;
+  G.queryFilters = [];
+  addFilter();
+  const opts = fi.headers.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+  gi('q-groupby').innerHTML = `<option value="">— No grouping —</option>` + opts;
+  gi('q-sortby').innerHTML = `<option value="">— Default —</option>` + opts;
+}
+
+function addFilter() {
+  const fi = G.files.query;
+  if (!fi) return;
+  const id = Date.now();
+  G.queryFilters.push(id);
+  const colOpts = fi.headers.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+  const opOpts = ['contains','equals','starts_with','not_contains','greater_than','less_than','is_empty','is_not_empty'].map(o=>`<option value="${o}">${opLabel(o)}</option>`).join('');
+  const row = document.createElement('div');
+  row.className = 'filter-row'; row.id = `fr-${id}`;
+  row.innerHTML = `
+    <select class="filter-input" id="fc-${id}" onchange="onFilterColChange(${id})">${colOpts}</select>
+    <select class="filter-input" id="fo-${id}">${opOpts}</select>
+    <input class="filter-input" id="fv-${id}" placeholder="Value…" id="fv-${id}"/>
+    <button class="btn-remove-filter" onclick="removeFilter(${id})">×</button>`;
+  gi('filter-builder').appendChild(row);
+}
+function opLabel(o){const m={'contains':'Contains','equals':'Equals','starts_with':'Starts with','not_contains':'Not contains','greater_than':'Greater than','less_than':'Less than','is_empty':'Is empty','is_not_empty':'Is not empty'};return m[o]||o;}
+function onFilterColChange(id){ /* auto-detect operator based on col type */ }
+function removeFilter(id) { G.queryFilters=G.queryFilters.filter(f=>f!==id); gi(`fr-${id}`)?.remove(); }
+function clearFilters() { gi('filter-builder').innerHTML=''; G.queryFilters=[]; addFilter(); }
+
+function runQuery() {
+  const fi = G.files.query;
+  if (!fi) { toast('er','❌ No file loaded'); return; }
+  const filters = G.queryFilters.map(id => ({
+    col: gi(`fc-${id}`)?.value,
+    op:  gi(`fo-${id}`)?.value,
+    val: (gi(`fv-${id}`)?.value||'').trim()
+  })).filter(f => f.col);
+  if (!filters.length) { toast('wa','⚠️ Add at least one filter condition'); return; }
+
+  let rows = [...fi.data];
+  for (const f of filters) {
+    rows = rows.filter(r => {
+      const cellRaw = r[f.col] || '';
+      const cell = cellRaw.toString().toLowerCase();
+      const val = f.val.toLowerCase();
+      const num = parseFloat(cellRaw.toString().replace(/[$,\s]/g,''));
+      const fnum = parseFloat(f.val.replace(/[$,\s]/g,''));
+      switch(f.op) {
+        case 'contains': return cell.includes(val);
+        case 'equals': return cell === val;
+        case 'starts_with': return cell.startsWith(val);
+        case 'not_contains': return !cell.includes(val);
+        case 'greater_than': return !isNaN(num) && !isNaN(fnum) && num > fnum;
+        case 'less_than': return !isNaN(num) && !isNaN(fnum) && num < fnum;
+        case 'is_empty': return !cellRaw || cellRaw.trim() === '';
+        case 'is_not_empty': return cellRaw && cellRaw.trim() !== '';
+        default: return true;
+      }
+    });
+  }
+
+  // Group by
+  const groupBy = gi('q-groupby').value;
+  const sortBy = gi('q-sortby').value;
+  if (sortBy) rows.sort((a,b)=>{
+    const av=a[sortBy]||'', bv=b[sortBy]||'';
+    const an=parseFloat(av.toString().replace(/[$,]/g,'')), bn=parseFloat(bv.toString().replace(/[$,]/g,''));
+    return (!isNaN(an)&&!isNaN(bn)) ? bn-an : String(av).localeCompare(String(bv));
+  });
+
+  G.results['qresults'] = rows;
+  G.ft['qresults'] = ''; G.pg['qresults'] = 1;
+
+  // Summary cards
+  const costCol = bestCol(fi, COST_KW);
+  const summCards = [];
+  summCards.push({label:'Matching Rows', val:rows.length.toLocaleString(), color:'var(--aws)'});
+  if (costCol) {
+    const total = rows.reduce((a,r)=>{ const v=r['totalCost']!==undefined?parseFloat(r['totalCost']||0):parseCostVal(r[costCol]||0); return a+(isNaN(v)?0:v); },0);
+    const avg = rows.length ? total/rows.length : 0;
+    summCards.push({label:'Total Cost', val:`$${total.toFixed(2)}`, color:'var(--red)'});
+    summCards.push({label:'Avg Cost', val:`$${avg.toFixed(2)}`, color:'var(--yellow)'});
+  }
+  if (groupBy) {
+    const groups = new Set(rows.map(r=>r[groupBy]||'(blank)')).size;
+    summCards.push({label:`Unique ${groupBy.slice(0,12)}`, val:groups, color:'var(--blue2)'});
+  }
+  gi('query-summary-cards').innerHTML = summCards.map(c=>`
+    <div class="stat-card" style="text-align:center;padding:14px">
+      <div class="sc-label">${esc(c.label)}</div>
+      <div class="sc-val" style="font-size:20px;color:${c.color}">${c.val}</div>
+    </div>`).join('');
+
+  gi('q-row-count').textContent = `${rows.length.toLocaleString()} rows match`;
+  renderDynTable('qresults', fi.headers, rows);
+  gi('query-results').style.display='block';
+  G._queryResultsVisible=true;
+  gi('query-results').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('ok',`✅ Query returned ${rows.length.toLocaleString()} rows`);
+}
+
+function resetQuery() {
+  clearFile('query');
+  gi('query-builder-section').style.display='none';
+  gi('query-results').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COST COMPARE
+// ═══════════════════════════════════════════════════════════════
+function populateCmpConfig() {
+  const fp = G.files.prev, fc = G.files.curr;
+  const bKey = bestCol(fp, KEY_KW);
+  const bCost = bestCol(fp, COST_KW);
+  const bSvc = bestCol(fp, SERVICE_KW);
+  const allH = [...new Set([...fp.headers,...fc.headers])];
+  const opts = h => allH.map(v=>`<option value="${esc(v)}" ${v===h?'selected':''}>${esc(v)}</option>`).join('');
+  gi('cmp-col-key').innerHTML = opts(bKey);
+  gi('cmp-col-cost').innerHTML = opts(bCost);
+  gi('cmp-col-service').innerHTML = `<option value="">— None —</option>` + opts(bSvc);
+}
+
+async function runCompare() {
+  const fp = G.files.prev, fc = G.files.curr;
+  if (!fp || !fc) { toast('er','❌ Both files required'); return; }
+  const keyCol = gi('cmp-col-key').value;
+  const costCol = gi('cmp-col-cost').value;
+  const spikeThresh = parseFloat(gi('cmp-spike').value) / 100;
+  const svcCol = gi('cmp-col-service').value;
+  if (!keyCol || !costCol) { toast('er','❌ Select key and cost columns'); return; }
+
+  const parseCost = v => parseFloat(String(v||'0').replace(/[$,\s]/g,''))||0;
+
+  // Build maps
+  const prevMap = {};
+  fp.data.forEach(r => { const k=norm(r[keyCol]||''); if(k) prevMap[k]={val:r[keyCol],cost:parseCost(r[costCol]),svc:svcCol?r[svcCol]||'':''};});
+  const currMap = {};
+  fc.data.forEach(r => { const k=norm(r[keyCol]||''); if(k) currMap[k]={val:r[keyCol],cost:parseCost(r[costCol]),svc:svcCol?r[svcCol]||'':''};});
+
+  const spikes=[],drops=[],newRes=[],gone=[],all=[];
+  const allKeys = new Set([...Object.keys(prevMap),...Object.keys(currMap)]);
+
+  for (const k of allKeys) {
+    const p = prevMap[k], c = currMap[k];
+    if (p && c) {
+      const delta = c.cost - p.cost;
+      const deltaPct = p.cost > 0 ? delta / p.cost : (c.cost > 0 ? 1 : 0);
+      const row = {resource:c.val||p.val, prevCost:p.cost.toFixed(2), currCost:c.cost.toFixed(2), deltaDollar:delta.toFixed(2), deltaPct:(deltaPct*100).toFixed(1)+'%', service:c.svc||p.svc};
+      all.push({...row, type: deltaPct > spikeThresh ? 'COST SPIKE' : deltaPct < -spikeThresh ? 'COST DROP' : '⚪ Stable'});
+      if (deltaPct > spikeThresh) spikes.push(row);
+      else if (deltaPct < -spikeThresh) drops.push(row);
+    } else if (!p && c) {
+      newRes.push({resource:c.val, currCost:c.cost.toFixed(2), service:c.svc, status:'NEW RESOURCE'});
+      all.push({resource:c.val, prevCost:'0.00', currCost:c.cost.toFixed(2), deltaDollar:c.cost.toFixed(2), deltaPct:'NEW', service:c.svc, type:'NEW RESOURCE'});
+    } else if (p && !c) {
+      gone.push({resource:p.val, prevCost:p.cost.toFixed(2), service:p.svc, status:'Removed'});
+      all.push({resource:p.val, prevCost:p.cost.toFixed(2), currCost:'0.00', deltaDollar:(-p.cost).toFixed(2), deltaPct:'REMOVED', service:p.svc, type:'Removed'});
+    }
+  }
+
+  // Sort spikes by delta
+  spikes.sort((a,b)=>parseFloat(b.deltaDollar)-parseFloat(a.deltaDollar));
+  drops.sort((a,b)=>parseFloat(a.deltaDollar)-parseFloat(b.deltaDollar));
+
+  G.results['c-spikes']=spikes;G.results['c-drops']=drops;G.results['c-new']=newRes;G.results['c-gone']=gone;G.results['c-all']=all;
+  ['c-spikes','c-drops','c-new','c-gone','c-all'].forEach(t=>{G.ft[t]='';G.pg[t]=1;gi(`tc-${t}`).textContent=G.results[t].length;renderTab(t);});
+
+  // Summary
+  const totalPrev=Object.values(prevMap).reduce((a,v)=>a+v.cost,0);
+  const totalCurr=Object.values(currMap).reduce((a,v)=>a+v.cost,0);
+  const totalDelta=totalCurr-totalPrev;
+  gi('cmp-summary-cards').innerHTML = [
+    {ico:'💰',label:'Previous Total',val:`$${totalPrev.toFixed(2)}`,color:'var(--t2)'},
+    {ico:'💳',label:'Current Total',val:`$${totalCurr.toFixed(2)}`,color:totalCurr>totalPrev?'var(--red)':'var(--green)'},
+    {ico:'📊',label:'Net Change',val:`${totalDelta>=0?'+':''}$${totalDelta.toFixed(2)}`,color:totalDelta>0?'var(--red)':'var(--green)'},
+  ].map(c=>`<div class="cs-card"><div class="cs-ico">${c.ico}</div><div class="cs-label">${c.label}</div><div class="cs-val" style="color:${c.color}">${c.val}</div></div>`).join('');
+
+  gi('cmp-results').style.display='block';
+  G._cmpResultsVisible=true; G._lastCmpTab='c-spikes';
+  gi('cmp-results').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('ok',`✅ Cost comparison done — ${spikes.length} spikes, ${newRes.length} new resources`);
+}
+
+function resetCompare() {
+  ['prev','curr'].forEach(k=>clearFile(k));
+  gi('cmp-config').style.display='none';
+  gi('cmp-results').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FINOPS TEMPLATES
+// ═══════════════════════════════════════════════════════════════
+const TEMPLATES = [
+  {id:'idle',ico:'😴',name:'Idle Resources',desc:'Cost > $0 but zero or empty usage/utilization', fn:'tplIdle'},
+  {id:'top10',ico:'🔝',name:'Top 10 by Cost',desc:'Highest spending resources sorted descending', fn:'tplTop10'},
+  {id:'ec2only',ico:'🖥️',name:'EC2 Only',desc:'Filter rows where service/type contains EC2', fn:'tplEC2'},
+  {id:'s3only',ico:'🪣',name:'S3 Only',desc:'Filter rows where service/type contains S3', fn:'tplS3'},
+  {id:'rdsonly',ico:'🗄️',name:'RDS Only',desc:'Filter rows where service/type contains RDS', fn:'tplRDS'},
+  {id:'over50',ico:'⚠️',name:'Cost > $50',desc:'Resources spending more than $50 this period', fn:'tplOver50'},
+  {id:'over100',ico:'🚨',name:'Cost > $100',desc:'High spenders — cost exceeds $100', fn:'tplOver100'},
+  {id:'untagged',ico:'🏷️',name:'Untagged Resources',desc:'Resources with empty or missing tag columns', fn:'tplUntagged'},
+  {id:'zombie',ico:'',name:'Zombie EC2',desc:'EC2 resources with cost > $0 and stopped/terminated status', fn:'tplZombie'},
+  {id:'region',ico:'🌍',name:'By Region',desc:'Group and summarize spend by region/AZ', fn:'tplByRegion'},
+  {id:'service',ico:'📦',name:'By Service',desc:'Group and total spend by service type', fn:'tplByService'},
+  {id:'budget',ico:'💸',name:'Over Budget (Custom)',desc:'Enter your budget limit — find all resources that exceed it', fn:'tplBudget'},
+];
+
+function populateFinopsTemplates() {
+  const fi = G.files.finops;
+  gi('templates-grid').innerHTML = TEMPLATES.map(t=>`
+    <div class="template-card" onclick="${t.fn}()">
+      <div class="tc-icon">${t.ico}</div>
+      <div class="tc-name">${t.name}</div>
+      <div class="tc-desc">${t.desc}</div>
+    </div>`).join('');
+  const colOpts = fi.headers.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+  const withBlank = `<option value="">— Not available —</option>` + colOpts;
+  const bName=bestCol(fi,KEY_KW), bCost=bestCol(fi,COST_KW), bUsage=bestCol(fi,USAGE_KW), bSvc=bestCol(fi,SERVICE_KW);
+  gi('ft-col-name').innerHTML = colOpts.replace(`value="${esc(bName||'')}"`,'$& selected');
+  gi('ft-col-cost').innerHTML = colOpts.replace(`value="${esc(bCost||'')}"`,'$& selected');
+  gi('ft-col-usage').innerHTML = withBlank.replace(`value="${esc(bUsage||'')}"`,'$& selected');
+  gi('ft-col-service').innerHTML = withBlank.replace(`value="${esc(bSvc||'')}"`,'$& selected');
+}
+
+function showFinopsResults(title, rows, headers) {
+  if (!rows.length) { toast('wa',`⚠️ No rows match this template`); return; }
+  gi('finops-result-title').textContent = title;
+  G.results['finops-res'] = rows; G.ft['finops-res']=''; G.pg['finops-res']=1;
+  const fi = G.files.finops;
+  const costCol = gi('ft-col-cost').value;
+  // For grouped rows (tplByService/tplByRegion), cost is in 'totalCost' field
+  // For raw rows, cost is in the original costCol
+  const total = rows.reduce((a,r)=>{
+    // Try totalCost first (grouped), then costCol (raw), then any numeric field
+    const v = r['totalCost'] !== undefined ? parseFloat(r['totalCost']||0)
+            : parseCostVal(r[costCol]||0);
+    return a + (isNaN(v)?0:v);
+  }, 0);
+  gi('finops-summary').innerHTML = [
+    {label:'Matching Resources', val:rows.length, color:'var(--aws)'},
+    {label:'Total Cost', val:`$${total.toFixed(2)}`, color:'var(--red)'},
+    {label:'Avg Cost', val:`$${rows.length?((total/rows.length).toFixed(2)):0}`, color:'var(--yellow)'},
+  ].map(c=>`<div class="stat-card" style="text-align:center;padding:14px"><div class="sc-label">${c.label}</div><div class="sc-val" style="font-size:18px;color:${c.color}">${c.val}</div></div>`).join('');
+  gi('finops-row-count').textContent = `${rows.length.toLocaleString()} rows`;
+  renderDynTable('finops-res', headers||fi.headers, rows);
+  gi('finops-results').style.display='block'; G._finopsResultsVisible=true;
+  gi('finops-results').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('ok',`✅ ${rows.length} resources found`);
+}
+
+function parseCostVal(v){
+  if(v===null||v===undefined)return 0;
+  let s=String(v).trim();
+  if(s.startsWith('(')&&s.endsWith(')'))s=s.slice(1,-1);
+  s=s.replace(/[$£€¥,\s%]/g,'').replace(/USD|EUR|GBP/gi,'').trim();
+  if(/^\d+\.?\d*[kK]$/.test(s))return parseFloat(s)*1000;
+  if(/^\d+\.?\d*[mM]$/.test(s))return parseFloat(s)*1000000;
+  return parseFloat(s)||0;
+}
+
+function tplIdle(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value, usageCol=gi('ft-col-usage').value;
+  if(!costCol){toast('er','❌ Set cost column first');return;}
+  let rows=fi.data.filter(r=>parseCostVal(r[costCol])>0);
+  if(usageCol) rows=rows.filter(r=>!r[usageCol]||r[usageCol].trim()===''||r[usageCol]==='0'||r[usageCol]==='0%'||r[usageCol].toLowerCase()==='stopped');
+  showFinopsResults('😴 Idle Resources',rows,fi.headers);
+}
+function tplTop10(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value; if(!costCol){toast('er','❌ Set cost column');return;}
+  const rows=[...fi.data].sort((a,b)=>parseCostVal(b[costCol])-parseCostVal(a[costCol])).slice(0,10);
+  showFinopsResults('🔝 Top 10 by Cost',rows,fi.headers);
+}
+function tplSvcFilter(svc){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const svcCol=gi('ft-col-service').value;
+  let rows=fi.data;
+  if(svcCol) rows=rows.filter(r=>String(r[svcCol]||'').toLowerCase().includes(svc.toLowerCase()));
+  else rows=rows.filter(r=>Object.values(r).some(v=>String(v||'').toLowerCase().includes(svc.toLowerCase())));
+  showFinopsResults(`${svc} Resources`,rows,fi.headers);
+}
+function tplEC2(){tplSvcFilter('EC2')}
+function tplS3(){tplSvcFilter('S3')}
+function tplRDS(){tplSvcFilter('RDS')}
+function tplOver50(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value; if(!costCol){toast('er','❌ Set cost column');return;}
+  const rows=fi.data.filter(r=>parseCostVal(r[costCol])>50).sort((a,b)=>parseCostVal(b[costCol])-parseCostVal(a[costCol]));
+  showFinopsResults('⚠️ Cost > $50',rows,fi.headers);
+}
+function tplOver100(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value; if(!costCol){toast('er','❌ Set cost column');return;}
+  const rows=fi.data.filter(r=>parseCostVal(r[costCol])>100).sort((a,b)=>parseCostVal(b[costCol])-parseCostVal(a[costCol]));
+  showFinopsResults('🚨 Cost > $100',rows,fi.headers);
+}
+function tplUntagged(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const tagCols=fi.headers.filter(h=>TAG_KW.some(k=>h.toLowerCase().includes(k)));
+  if(!tagCols.length){toast('wa','⚠️ No tag columns detected in this file');return;}
+  const rows=fi.data.filter(r=>tagCols.some(c=>!r[c]||r[c].trim()===''||r[c].toLowerCase()==='none'||r[c].toLowerCase()==='n/a'));
+  showFinopsResults('🏷️ Untagged Resources',rows,fi.headers);
+}
+function tplZombie(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value;
+  const statusKW=['stopped','terminated','idle','unused','decommissioned'];
+  const rows=fi.data.filter(r=>{
+    const hasEC2=Object.values(r).some(v=>String(v||'').toLowerCase().includes('ec2'));
+    const hasStatus=Object.values(r).some(v=>statusKW.some(k=>String(v||'').toLowerCase().includes(k)));
+    const hasCost=costCol&&parseCostVal(r[costCol])>0;
+    return hasEC2&&(hasStatus||hasCost);
+  });
+  showFinopsResults('Zombie EC2',rows,fi.headers);
+}
+function tplByRegion(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const regCol=bestCol(fi,REGION_KW), costCol=gi('ft-col-cost').value;
+  if(!regCol){toast('wa','⚠️ No region column detected');return;}
+  const groups={};
+  fi.data.forEach(r=>{
+    const reg=r[regCol]||'(unknown)';
+    if(!groups[reg])groups[reg]={region:reg,resources:0,totalCost:0};
+    groups[reg].resources++;
+    if(costCol)groups[reg].totalCost+=parseCostVal(r[costCol]);
+  });
+  const rows=Object.values(groups).map(g=>({...g,totalCost:g.totalCost,TotalCost:g.totalCost.toFixed(2)})).sort((a,b)=>b.totalCost-a.totalCost);
+  showFinopsResults('🌍 Spend by Region',rows,['region','resources','totalCost']);
+}
+function tplByService(){
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const svcCol=gi('ft-col-service').value, costCol=gi('ft-col-cost').value;
+  if(!svcCol){toast('wa','⚠️ No service column detected — set it manually');return;}
+  const groups={};
+  fi.data.forEach(r=>{
+    const svc=r[svcCol]||'(unknown)';
+    if(!groups[svc])groups[svc]={service:svc,resources:0,totalCost:0};
+    groups[svc].resources++;
+    if(costCol)groups[svc].totalCost+=parseCostVal(r[costCol]);
+  });
+  const rows=Object.values(groups).map(g=>({...g,totalCost:g.toFixed?g.totalCost.toFixed(2):parseFloat(g.totalCost).toFixed(2)})).sort((a,b)=>parseFloat(b.totalCost)-parseFloat(a.totalCost));
+  showFinopsResults('📦 Spend by Service',rows,['service','resources','totalCost']);
+}
+function tplBudget(){
+  const limit=prompt('Enter budget limit ($):');
+  if(!limit||isNaN(parseFloat(limit)))return;
+  const fi=G.files.finops; if(!fi){toast('er','❌ Upload a file first');return;}
+  const costCol=gi('ft-col-cost').value; if(!costCol){toast('er','❌ Set cost column');return;}
+  const rows=fi.data.filter(r=>parseCostVal(r[costCol])>parseFloat(limit)).sort((a,b)=>parseCostVal(b[costCol])-parseCostVal(a[costCol]));
+  showFinopsResults(`💸 Cost > $${limit}`,rows,fi.headers);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER TABLES
+// ═══════════════════════════════════════════════════════════════
+const BADGE_MAP = {
+  exact:`<span class="badge b-exact">EXACT</span>`,
+  normalized:`<span class="badge b-norm">NORM</span>`,
+  fuzzy:`<span class="badge b-fuzzy">FUZZY</span>`,
+  partial:`<span class="badge b-partial">PARTIAL</span>`,
+};
+
+function renderTab(tab) {
+  const rows = getFiltered(tab);
+  const pg = G.pg[tab]||1;
+  const paged = paginate(rows, pg);
+  const tbody = gi(`tbody-${tab}`);
+  if (!tbody) return;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="20"><div class="empty-state"><div class="empty-ico">🎉</div><div class="empty-txt">No records in this category</div></div></td></tr>`;
+    renderPager(tab, 0); return;
+  }
+
+  if (tab==='r-confirmed') {
+    tbody.innerHTML = paged.map((r,i) => {
+      const extras = Object.keys(r).filter(k=>!['app','truthApp','matchType','score','rowMonthly','rowTruth'].includes(k));
+      const extraHtml = extras.slice(0,3).map(k=>`<span style="color:var(--t3);font-size:10px">${esc(k).slice(0,8)}: </span><span style="color:var(--t2)">${esc(String(r[k]||'')).slice(0,20)}</span> `).join('');
+      return `<tr>
+        <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+        <td style="color:var(--red);font-weight:600" title="${esc(r.app)}">${esc(r.app).slice(0,40)}</td>
+        <td style="color:var(--t2)" title="${esc(r.truthApp)}">${esc(r.truthApp||'').slice(0,40)}</td>
+        <td>${BADGE_MAP[r.matchType]||''}</td>
+        <td>${scorePill(r.score)}</td>
+        <td style="color:var(--t3)">${r.rowMonthly}</td>
+        <td style="font-size:10px;color:var(--t3)">${extraHtml}</td>
+      </tr>`;
+    }).join('');
+  } else if (tab==='r-review') {
+    tbody.innerHTML = paged.map((r,i) => {
+      const idx=(pg-1)*G.pgSz+i;
+      const d=G.decisions[idx]||'';
+      return `<tr>
+        <td style="color:var(--t4)">${idx+1}</td>
+        <td style="color:var(--yellow);font-weight:600" title="${esc(r.app)}">${esc(r.app).slice(0,40)}</td>
+        <td style="color:var(--t2)" title="${esc(r.truthApp)}">${esc(r.truthApp||'').slice(0,40)}</td>
+        <td>${BADGE_MAP[r.matchType]||''}</td>
+        <td>${scorePill(r.score)}</td>
+        <td>
+          <button class="act-btn acc ${d==='acc'?'accd':''}" onclick="setDec(${idx},'acc')">✓</button>
+          <button class="act-btn rej ${d==='rej'?'rejd':''}" onclick="setDec(${idx},'rej')">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } else if (tab==='r-new'||tab==='r-clean') {
+    const color = tab==='r-clean'?'var(--green)':'var(--purple)';
+    const badge = tab==='r-clean'?'<span class="badge b-clean">✓ ACTIVE</span>':'<span class="badge b-new">NOT IN SOURCE</span>';
+    tbody.innerHTML = paged.map((r,i) => {
+      const extras = Object.keys(r).filter(k=>k!=='app'&&k!=='rowMonthly');
+      const extraHtml = extras.slice(0,3).map(k=>`<span style="color:var(--t3);font-size:10px">${esc(k).slice(0,8)}: </span><span style="color:var(--t2)">${esc(String(r[k]||'')).slice(0,20)}</span> `).join('');
+      return `<tr>
+        <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+        <td style="color:${color};font-weight:600" title="${esc(r.app)}">${esc(r.app).slice(0,60)}</td>
+        <td>${badge}</td><td style="color:var(--t3)">${r.rowMonthly}</td>
+        <td style="font-size:10px">${extraHtml}</td>
+      </tr>`;
+    }).join('');
+  } else if (tab==='r-missing') {
+    tbody.innerHTML = paged.map((r,i)=>`<tr>
+      <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+      <td style="color:var(--blue2);font-weight:600" title="${esc(r.app)}">${esc(r.app).slice(0,60)}</td>
+      <td><span class="badge b-partial">NOT IN MONTHLY</span></td>
+      <td style="color:var(--t3)">${r.rowTruth}</td>
+    </tr>`).join('');
+  } else if (tab==='r-dups') {
+    tbody.innerHTML = paged.map((r,i)=>`<tr>
+      <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+      <td style="color:var(--yellow);font-weight:600">${esc(r.app).slice(0,50)}</td>
+      <td style="color:var(--t2)">${esc(r.file)}</td>
+      <td><span class="badge b-fuzzy">${r.count}×</span></td>
+      <td style="color:var(--t3);font-size:10px">${esc(r.rows)}</td>
+    </tr>`).join('');
+  } else if (['c-spikes','c-drops','c-all'].includes(tab)) {
+    tbody.innerHTML = paged.map((r,i)=>{
+      const dNum=parseFloat(r.deltaDollar||0);
+      const dColor=dNum>0?'var(--red)':dNum<0?'var(--green)':'var(--t3)';
+      return `<tr>
+        <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+        <td style="font-weight:600" title="${esc(r.resource)}">${esc(r.resource||'').slice(0,50)}</td>
+        <td style="color:var(--t2)">$${r.prevCost}</td>
+        <td style="color:var(--t2)">$${r.currCost}</td>
+        <td style="color:${dColor};font-weight:600">${dNum>=0?'+':''}$${r.deltaDollar}</td>
+        <td style="color:${dColor}">${r.deltaPct}</td>
+        <td style="color:var(--t3);font-size:10px">${esc(r.service||r.type||'').slice(0,20)}</td>
+      </tr>`;
+    }).join('');
+  } else if (tab==='c-new') {
+    tbody.innerHTML = paged.map((r,i)=>`<tr>
+      <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+      <td style="color:var(--purple);font-weight:600">${esc(r.resource||'').slice(0,50)}</td>
+      <td style="color:var(--t2)">$${r.currCost}</td>
+      <td style="color:var(--t3);font-size:10px">${esc(r.service||'').slice(0,20)}</td>
+      <td><span class="badge b-new">NEW</span></td>
+    </tr>`).join('');
+  } else if (tab==='c-gone') {
+    tbody.innerHTML = paged.map((r,i)=>`<tr>
+      <td style="color:var(--t4)">${(pg-1)*G.pgSz+i+1}</td>
+      <td style="color:var(--t2);font-weight:600">${esc(r.resource||'').slice(0,50)}</td>
+      <td style="color:var(--t2)">$${r.prevCost}</td>
+      <td style="color:var(--t3);font-size:10px">${esc(r.service||'').slice(0,20)}</td>
+      <td><span class="badge" style="background:var(--surface3);color:var(--t3);border:1px solid var(--border)">REMOVED</span></td>
+    </tr>`).join('');
+  }
+
+  renderPager(tab, rows.length);
+}
+
+function renderDynTable(tab, headers, rows) {
+  const thead = gi(`thead-${tab}`), tbody = gi(`tbody-${tab}`);
+  if (!thead || !tbody) return;
+  thead.innerHTML = `<tr>${headers.map((h,i)=>`<th onclick="sortDyn('${tab}',${i},'${esc(h)}')">${esc(h).slice(0,20)} ↕</th>`).join('')}</tr>`;
+  G.pg[tab]=1;
+  renderDynRows(tab, headers, rows);
+}
+function renderDynRows(tab, headers, rows) {
+  const tbody = gi(`tbody-${tab}`);
+  const pg = G.pg[tab]||1;
+  const paged = paginate(getFiltered(tab), pg);
+  if (!paged.length) { tbody.innerHTML=`<tr><td colspan="20"><div class="empty-state"><div class="empty-ico">🔍</div><div class="empty-txt">No matching rows</div></div></td></tr>`; renderPager(tab,0); return; }
+  tbody.innerHTML = paged.map((r,i)=>`<tr>${headers.map(h=>{const v=r[h]||'';const isNum=!isNaN(parseFloat(String(v).replace(/[$,]/g,'')))&&v!=='';return `<td style="${isNum?'color:var(--aws)':''}" title="${esc(v)}">${esc(String(v)).slice(0,30)}</td>`}).join('')}</tr>`).join('');
+  renderPager(tab, getFiltered(tab).length);
+}
+function sortDyn(tab, colIdx, colName) {
+  const key=`${tab}-${colIdx}`;G.sortDirs[key]=!G.sortDirs[key];
+  const asc=G.sortDirs[key];
+  G.results[tab].sort((a,b)=>{
+    const av=a[colName]||'',bv=b[colName]||'';
+    const an=parseFloat(String(av).replace(/[$,]/g,'')),bn=parseFloat(String(bv).replace(/[$,]/g,''));
+    if(!isNaN(an)&&!isNaN(bn))return asc?an-bn:bn-an;
+    return asc?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));
+  });
+  G.pg[tab]=1;
+  const fi=G.files[tab==='qresults'?'query':'finops'];
+  if(fi) renderDynRows(tab, fi.headers.filter(h=>G.results[tab].some(r=>h in r)), G.results[tab]);
+}
+
+function scorePill(score) {
+  const pct = Math.round((score||0)*100);
+  const c = pct>=95?'var(--red)':pct>=85?'var(--yellow)':'var(--blue2)';
+  return `<div class="score-inline"><div class="si-bar"><div class="si-fill" style="width:${pct}%;background:${c}"></div></div><span style="color:${c};font-size:10px">${pct}%</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILTER / SORT / PAGINATION
+// ═══════════════════════════════════════════════════════════════
+function getFiltered(tab) {
+  const rows = G.results[tab]||[], f = G.ft[tab]||'';
+  if (!f) return rows;
+  const fl = f.toLowerCase();
+  return rows.filter(r => Object.values(r).some(v => String(v||'').toLowerCase().includes(fl)));
+}
+function ft(tab, val) { G.ft[tab]=val; G.pg[tab]=1; renderTab(tab); }
+function paginate(rows, pg) { const s=(pg-1)*G.pgSz; return rows.slice(s,s+G.pgSz); }
+function renderPager(tab, total) {
+  const el = gi(`pg-${tab}`); if(!el)return;
+  const pages=Math.ceil(total/G.pgSz), cur=G.pg[tab]||1;
+  if(pages<=1){el.innerHTML=total>0?`<span>${total.toLocaleString()} records</span><div></div>`:'';return;}
+  let btns='';
+  const s=Math.max(1,cur-2),e=Math.min(pages,cur+2);
+  if(s>1)btns+=`<button class="pg-btn" onclick="gp('${tab}',1)">1</button>${s>2?'<span style="color:var(--t4);padding:0 4px">…</span>':''}`;
+  for(let i=s;i<=e;i++)btns+=`<button class="pg-btn ${i===cur?'on':''}" onclick="gp('${tab}',${i})">${i}</button>`;
+  if(e<pages)btns+=`${e<pages-1?'<span style="color:var(--t4);padding:0 4px">…</span>':''}<button class="pg-btn" onclick="gp('${tab}',${pages})">${pages}</button>`;
+  el.innerHTML=`<span style="font-family:'JetBrains Mono',monospace;font-size:10px">${total.toLocaleString()} records · Page ${cur}/${pages}</span><div class="pager-btns">${btns}</div>`;
+}
+function gp(tab,pg){G.pg[tab]=pg;renderTab(tab);}
+function sortT(tab,col){
+  const key=`${tab}-${col}`;G.sortDirs[key]=!G.sortDirs[key];
+  G.results[tab].sort((a,b)=>{
+    const av=Object.values(a)[col]??'',bv=Object.values(b)[col]??'';
+    const an=parseFloat(String(av).replace(/[$,]/g,'')),bn=parseFloat(String(bv).replace(/[$,]/g,''));
+    return G.sortDirs[key]?((!isNaN(an)&&!isNaN(bn))?an-bn:String(av).localeCompare(String(bv))):((!isNaN(an)&&!isNaN(bn))?bn-an:String(bv).localeCompare(String(av)));
+  });
+  G.pg[tab]=1;renderTab(tab);
+}
+function setDec(idx,d){G.decisions[idx]=d;renderTab('r-review');}
+function acceptAllReview(){G.results['r-review'].forEach((_,i)=>{G.decisions[i]='acc';});renderTab('r-review');}
+function swTab(ns,tab){
+  // Track active tab
+  if(ns==='rec') G._lastRecTab=tab;
+  if(ns==='cmp') G._lastCmpTab=tab;
+
+  // Get ALL tab buttons for this namespace
+  var allBtns = document.querySelectorAll('[onclick*="swTab(\'' + ns + '\'"]');
+  allBtns.forEach(function(b){ b.classList.toggle('on', b.dataset.t===tab); });
+
+  // Get ALL tab panels for this namespace
+  // Reconcile panels: tc-panel-r-*
+  // Compare panels: tc-panel-c-*
+  var prefix = ns==='rec' ? 'tc-panel-r-' : ns==='cmp' ? 'tc-panel-c-' : 'tc-panel-';
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(p){
+    var shouldShow = p.id === 'tc-panel-'+tab;
+    p.classList.toggle('on', shouldShow);
+    p.style.display = shouldShow ? 'block' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA QUALITY RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderDQ(gridId, files) {
+  gi(gridId).innerHTML = files.map(f=>{
+    if(!f.q)return '';
+    const qColor=f.q.score>=80?'var(--green)':f.q.score>=50?'var(--yellow)':'var(--red)';
+    return `<div class="dq-card">
+      <div class="dq-title">${esc(f.name||'File')}</div>
+      <div class="dq-row"><span class="dq-key">Quality</span><span class="dq-val" style="color:${qColor}">${f.q.score}/100</span></div>
+      <div class="dq-row"><span class="dq-key">Rows</span><span class="dq-val">${f.rows.toLocaleString()}</span></div>
+      <div class="dq-row"><span class="dq-key">Columns</span><span class="dq-val">${f.cols}</span></div>
+      ${f.q.issues.map(iss=>`<div class="dq-row"><span class="dq-key">⚑</span><span class="dq-val ${iss.t==='ok'?'dq-ok':iss.t==='e'?'dq-err':'dq-w'}" style="color:${iss.t==='ok'?'var(--green)':iss.t==='e'?'var(--red)':'var(--yellow)'}">${esc(iss.m)}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+}
+// CSS helpers for DQ
+const style=document.createElement('style');
+style.textContent='.dq-ok{}.dq-w{}.dq-err{}.dq-o{color:var(--green)}.sc-o{color:var(--green)}';
+document.head.appendChild(style);
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════
+function toCSV(rows) {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const escape = v => { const s=String(v??''); return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s; };
+  return [headers.map(escape).join(','), ...rows.map(r=>headers.map(h=>escape(r[h]??'')).join(','))].join('\n');
+}
+function downloadCSV(csv, name) {
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);
+}
+function exportTab(tab) {
+  const rows=G.results[tab]||[];
+  if(!rows.length){toast('wa','⚠️ Nothing to export');return;}
+  const data=tab==='r-review'?rows.map((r,i)=>({...r,decision:G.decisions[i]||'Pending'})):rows;
+  downloadCSV(toCSV(data),`FinOps_${tab}_${ds()}.csv`);
+  toast('ok',`✅ Exported ${rows.length} rows`);
+}
+function exportAllRec() {
+  const tabs=['r-confirmed','r-review','r-new','r-clean','r-missing','r-dups'];
+  const wb=XLSX.utils.book_new();
+  const names={'r-confirmed':'Confirmed','r-review':'Review','r-new':'Not in Source','r-clean':'Clean Active','r-missing':'Missing','r-dups':'Duplicates'};
+  tabs.forEach(t=>{
+    const data=t==='r-review'?G.results[t].map((r,i)=>({...r,decision:G.decisions[i]||'Pending'})):G.results[t];
+    if(data&&data.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),names[t]);
+  });
+  const fi=G.files.truth, fc=G.files.compare;
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([
+    {Metric:'Source of Truth',Value:fi?.fileName||'-'},
+    {Metric:'Monthly Data',Value:fc?.fileName||'-'},
+    {Metric:'Confirmed Matches',Value:G.results['r-confirmed']?.length||0},
+    {Metric:'Needs Review',Value:G.results['r-review']?.length||0},
+    {Metric:'Clean / Active',Value:G.results['r-clean']?.length||0},
+    {Metric:'Duplicates',Value:G.results['r-dups']?.length||0},
+    {Metric:'Generated',Value:new Date().toLocaleString()},
+  ]),'Summary');
+  XLSX.writeFile(wb,`FinOps_Reconciliation_${ds()}.xlsx`);
+  toast('ok','✅ Full report exported');
+}
+function exportAllCmp() {
+  const wb=XLSX.utils.book_new();
+  [['c-spikes','Cost Spikes'],['c-drops','Cost Drops'],['c-new','New Resources'],['c-gone','Removed'],['c-all','All Changes']].forEach(([t,n])=>{
+    if(G.results[t]?.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(G.results[t]),n);
+  });
+  XLSX.writeFile(wb,`FinOps_CostCompare_${ds()}.xlsx`);
+  toast('ok','✅ Report exported');
+}
+function exportQueryResults() { exportTab('qresults'); }
+function exportFinopsResults() { exportTab('finops-res'); }
+function ds(){return new Date().toISOString().slice(0,10)}
+
+// ═══════════════════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════════════════
+function showProg(ns, steps) {
+  const wrap=gi(`${ns}-progress`); if(!wrap)return;
+  wrap.classList.add('show');
+  gi(`${ns}-prog-list`).innerHTML=steps.map((s,i)=>`
+    <div class="prog-item" id="${ns}-pi-${i}">
+      <div class="ps-dot" id="${ns}-pd-${i}">○</div>
+      <div class="prog-text" id="${ns}-pt-${i}">${s}</div>
+    </div>`).join('');
+  setProg(ns,0);
+}
+function updProg(ns,i,st){
+  const dot=gi(`${ns}-pd-${i}`),txt=gi(`${ns}-pt-${i}`);
+  if(!dot)return;
+  dot.className=`ps-dot ${st==='run'?'pd-run':st==='done'?'pd-done':''}`;
+  dot.textContent=st==='done'?'✓':st==='run'?'●':'○';
+  txt.className=`prog-text ${st==='run'?'pt-run':st==='done'?'pt-done':''}`;
+  setProg(ns,st==='done'?Math.round((i+1)/5*100):Math.round(i/5*100));
+}
+function setProg(ns,pct){const el=gi(`${ns}-prog-fill`);if(el)el.style.width=pct+'%';}
+function sl(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(type,msg){
+  const icons={ok:'✅',er:'❌',wa:'⚠️',info:'ℹ️'};
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  gi('toasts').appendChild(t);
+  setTimeout(()=>{t.style.animation='tout 0.25s ease forwards';setTimeout(()=>t.remove(),250);},4000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+function gi(id){return document.getElementById(id)}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+</script>
+
+<!-- ══════════════════════════════════════════
+     TERMS & DATA GUIDELINES MODAL
+══════════════════════════════════════════ -->
+<div class="terms-overlay" id="terms-overlay">
+  <div class="terms-modal">
+
+    <!-- Header -->
+    <div class="terms-header">
+      <div class="terms-logo-row" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="terms-logo">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="#FF9500"/>
+            <rect x="11" y="10" width="18" height="3.5" rx="1.75" fill="white"/>
+            <rect x="11" y="18.25" width="12" height="3.5" rx="1.75" fill="white"/>
+            <rect x="11" y="26.5" width="7" height="3.5" rx="1.75" fill="white"/>
+          </svg>
+        </div>
+          <div>
+            <div class="terms-title">FinOps <span>Intelligence</span> Platform</div>
+            <div class="terms-subtitle">AWS Cloud Reconciliation Tool — Internal Use Only</div>
+          </div>
+        </div>
+        <button class="modal-theme-btn" id="modal-theme-btn" onclick="toggleThemeModal()" title="Toggle light/dark mode">
+          
+          <span id="modal-theme-txt">Dark</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="terms-body">
+
+      <!-- Warning -->
+      <div class="terms-warning">
+        <div style="width:3px;align-self:stretch;background:var(--red);border-radius:2px;flex-shrink:0"></div>
+        <div><strong>Internal Tool.</strong> This platform is intended for FinOps team use only. Do not distribute or use outside of authorised internal systems.</div>
+      </div>
+
+      <!-- Data Privacy & Safety -->
+      <div class="terms-section">
+        <div class="ts-label">Data Privacy & Safety</div>
+        <div class="ts-box">
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div><strong>100% Local Processing.</strong> All data is processed entirely within your browser. No files, rows, or values are transmitted to any external server, API, or third-party service.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div><strong>Zero Data Retention.</strong> No data is stored, cached, or persisted beyond your active browser session. Closing or refreshing the tab permanently clears all uploaded data.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div><strong>Air-Gap Compatible.</strong> This tool operates fully offline with no internet connection required. It is safe for use in restricted or air-gapped network zones.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div><strong>No Authentication Required.</strong> The tool does not collect, transmit, or store usernames, passwords, employee IDs, or any identity data.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div><strong>Export Responsibility.</strong> Exported CSV/XLSX files contain your original data. Handle all exports in accordance with your organisation's data classification policies.</div></div>
+        </div>
+      </div>
+
+      <!-- Authorised Use -->
+      <div class="terms-section">
+        <div class="ts-label">Authorised Use</div>
+        <div class="ts-box">
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">→</div><div>Reconciliation of AWS resource inventories against decommissioned/retired resource lists</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">→</div><div>Analysis of AWS Cost Explorer exports and CUR (Cost & Usage Report) data for FinOps operations</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">→</div><div>Month-on-month cost comparison and anomaly detection for internal reporting</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">→</div><div>Resource tagging compliance checks and idle/unused resource identification</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">→</div><div>Internal Excel/CSV file analysis by authorised FinOps team members only</div></div>
+        </div>
+      </div>
+
+      <!-- Prohibited Use -->
+      <div class="terms-section">
+        <div class="ts-label">Prohibited Use</div>
+        <div class="ts-box">
+          <div class="ts-item"><div class="ts-ico" style="color:var(--red);font-size:11px;font-weight:700"></div><div><strong>Do not</strong> upload files containing personal data (names, emails, national IDs, HR records) not required for FinOps analysis</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--red);font-size:11px;font-weight:700"></div><div><strong>Do not</strong> share this tool or its exported outputs outside of authorised internal channels</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--red);font-size:11px;font-weight:700"></div><div><strong>Do not</strong> use on personal devices, public networks, or non-company managed hardware</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--red);font-size:11px;font-weight:700"></div><div><strong>Do not</strong> upload AWS root credentials, secret access keys, or any authentication tokens</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--red);font-size:11px;font-weight:700"></div><div><strong>Do not</strong> attempt to reverse-engineer, modify, or redistribute this tool without team lead approval</div></div>
+        </div>
+      </div>
+
+      <!-- Data Classification -->
+      <div class="terms-section">
+        <div class="ts-label">Data Classification Reminder</div>
+        <div class="ts-box">
+          <div class="ts-item"><div class="ts-ico" style="color:var(--yellow);font-size:11px;font-weight:700">!</div><div>AWS Account IDs, resource names, and cost data are sensitive. Handle in line with your organisation's data classification policy.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--aws);font-size:11px;font-weight:700">!</div><div>CUR files and billing exports contain sensitive cost data. Do not share outside your direct team without management approval.</div></div>
+          <div class="ts-item"><div class="ts-ico" style="color:var(--green);font-size:11px;font-weight:700"></div><div>Aggregated, anonymised summary reports are generally safe for internal sharing. Verify with your line manager if unsure.</div></div>
+        </div>
+      </div>
+
+      <!-- Checkboxes -->
+      <div class="terms-accept-row" id="chk-row-1" onclick="toggleCheck(1)">
+        <div class="terms-checkbox" id="chk-1"></div>
+        <div class="terms-accept-text">I confirm I am an authorised FinOps team member and will use this tool only for approved internal purposes</div>
+      </div>
+      <div class="terms-accept-row" id="chk-row-2" onclick="toggleCheck(2)" style="margin-top:8px">
+        <div class="terms-checkbox" id="chk-2"></div>
+        <div class="terms-accept-text">I have read and understood the data privacy guidelines and data classification policy above</div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="terms-footer">
+      <div class="terms-version">FinOps Intelligence Platform · v3.0.1 · 2025</div>
+      <button class="terms-proceed-btn" id="terms-proceed-btn" onclick="acceptTerms()">
+        <span>Enter Platform</span> <span>→</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+// ══════════════════════════════════════════
+//  TERMS — runs after full DOM is ready
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  var overlay = document.getElementById('terms-overlay');
+  if (!overlay) return;
+
+  // Check if already accepted this session
+  try {
+    if (sessionStorage.getItem('finops-terms-accepted') === 'yes') {
+      overlay.style.display = 'none';
+      return;
+    }
+  } catch(e) {}
+
+  // Show modal
+  overlay.style.display = 'flex';
+});
+
+var _checks = { 1: false, 2: false };
+
+function toggleCheck(n) {
+  _checks[n] = !_checks[n];
+  var row = document.getElementById('chk-row-' + n);
+  var box = document.getElementById('chk-' + n);
+  if (!row || !box) return;
+  row.classList.toggle('checked', _checks[n]);
+  box.textContent = _checks[n] ? '✓' : '';
+  var btn = document.getElementById('terms-proceed-btn');
+  if (!btn) return;
+  var allChecked = _checks[1] && _checks[2];
+  if (allChecked) {
+    btn.classList.add('enabled');
+  } else {
+    btn.classList.remove('enabled');
+  }
+}
+
+function toggleThemeModal() {
+  // Sync with main theme toggle
+  toggleTheme();
+  var isDark = !document.body.classList.contains('light');
+  
+  
+  
+  
+}
+
+// Sync modal toggle icon on init
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var isDark = !document.body.classList.contains('light');
+    
+    
+    
+    
+  }, 100);
+});
+
+function acceptTerms() {
+  if (!_checks[1] || !_checks[2]) return;
+  var overlay = document.getElementById('terms-overlay');
+  if (!overlay) return;
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.3s ease';
+  setTimeout(function() {
+    overlay.style.display = 'none';
+    overlay.style.opacity = '';
+    overlay.style.transition = '';
+  }, 300);
+  try { sessionStorage.setItem('finops-terms-accepted', 'yes'); } catch(e) {}
+  // Use setTimeout so toast() is available
+  setTimeout(function() {
+    if (typeof toast === 'function') toast('ok', 'Welcome. All data stays on your machine.');
+  }, 350);
+}
+</script>
+
+
+<script>
+// Walkthrough expand/collapse
+function toggleWT(id) {
+  var body = document.getElementById(id);
+  var arrow = document.getElementById(id + '-arrow');
+  if (!body) return;
+  var isOpen = body.style.display === 'block';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (arrow) {
+    arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  }
+}
+</script>
+
+<script>
+// ══════════════════════════════════════════
+//  APPLE-LEVEL ANIMATIONS
+// ══════════════════════════════════════════
+
+// 1. Scroll reveal — IntersectionObserver
+(function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+  // Observe sections
+  function initReveal() {
+    // Main sections
+    var sections = document.querySelectorAll('.section, .mode-bar, .upload-grid, .stats-row, .results, .walkthrough, #apple-bottom');
+    sections.forEach(function(el) {
+      if (!el.classList.contains('reveal')) {
+        el.classList.add('reveal');
+        observer.observe(el);
+      }
+    });
+    // Apple stats
+    var stats = document.querySelectorAll('.apple-stat');
+    stats.forEach(function(el) { observer.observe(el); });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initReveal);
+  } else {
+    initReveal();
+  }
+})();
+
+// 2. Number count-up for apple bottom stats
+function animateCount(el, target, duration, suffix) {
+  var start = 0;
+  var startTime = null;
+  var isFloat = String(target).includes('.');
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    var progress = Math.min((timestamp - startTime) / duration, 1);
+    // Apple easing — ease out expo
+    var eased = 1 - Math.pow(1 - progress, 4);
+    var current = Math.round(eased * target);
+    el.textContent = current + (suffix || '');
+    if (progress < 1) requestAnimationFrame(step);
+    else el.textContent = target + (suffix || '');
+  }
+  requestAnimationFrame(step);
+}
+
+// Observe apple stat numbers
+(function() {
+  var observed = false;
+  var statsObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting && !observed) {
+        observed = true;
+        var nums = [
+          { id: 'anim-5',   val: 5,   suffix: '',   delay: 0   },
+          { id: 'anim-0',   val: 0,   suffix: '',   delay: 120 },
+          { id: 'anim-12',  val: 13,  suffix: '',   delay: 240 },
+          { id: 'anim-35',  val: 45,  suffix: '',   delay: 360 },
+          { id: 'anim-110', val: 225, suffix: '',   delay: 480 },
+        ];
+        nums.forEach(function(n) {
+          setTimeout(function() {
+            var el = document.getElementById(n.id);
+            if (el) animateCount(el, n.val, 1800, n.suffix);
+          }, n.delay);
+        });
+        statsObserver.disconnect();
+      }
+    });
+  }, { threshold: 0.1 });
+
+  function initStats() {
+    var statsRow = document.getElementById('apple-bottom');
+    if (statsRow) {
+      statsObserver.observe(statsRow);
+      // Also trigger if already in viewport on load
+      setTimeout(function() {
+        var rect = statsRow.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          statsRow.dispatchEvent(new Event('forceAnimate'));
+          var nums = [
+            { id: 'anim-5',   val: 5,   delay: 200  },
+            { id: 'anim-0',   val: 0,   delay: 320  },
+            { id: 'anim-12',  val: 13,  delay: 440  },
+            { id: 'anim-35',  val: 45,  delay: 560  },
+            { id: 'anim-110', val: 225, delay: 680  },
+          ];
+          if (!observed) {
+            observed = true;
+            nums.forEach(function(n) {
+              setTimeout(function() {
+                var el = document.getElementById(n.id);
+                if (el) animateCount(el, n.val, 1800, '');
+              }, n.delay);
+            });
+          }
+        }
+      }, 800);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStats);
+  } else {
+    initStats();
+  }
+})();
+
+</script>
+
+
+
+
+
+
+
+
+<script>
+// ══════════════════════════════════════
+//  SMART RECONCILE UI
+// ══════════════════════════════════════
+function showRecAdvanced() {
+  gi('rec-advanced').style.display = 'block';
+}
+function hideRecAdvanced() {
+  gi('rec-advanced').style.display = 'none';
+  // Sync smart summary with whatever manual selection was made
+  updateSmartSummary();
+}
+function updateSmartSummary() {
+  var keyT = getKeyColTruth();
+  var keyC = getKeyColCompare();
+  var sub  = G.keyMode === 'manual' ? 'Manual selection' : 'Auto-detected';
+  var el = gi('rec-smart-summary');
+  if (!el) return;
+  if (keyT && keyC) {
+    gi('rss-key-truth').textContent   = keyT;
+    gi('rss-key-compare').textContent = keyC;
+    gi('rss-key-sub').textContent     = sub;
+    el.style.display = 'block';
+  }
+}
+</script>
+
+</body>
+</html>
